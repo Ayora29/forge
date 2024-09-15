@@ -113,6 +113,8 @@ ScryfallCode=E01
 104 L Swamp
 105 L Mountain
 106 L Forest
+
+[schemes]
 1 C Because I Have Willed It
 2 C Behold My Grandeur
 3 C Bow to My Command
