@@ -61,34 +61,15 @@ public class ImageUtil {
         }
         StringBuilder s = new StringBuilder();
 
-        CardRules card = cp.getRules();
-        String edition = cp.getEdition();
-        s.append(toMWSFilename(nameToUse));
-
-        final int cntPictures;
-        final boolean hasManyPictures;
-        final CardDb db =  !card.isVariant() ? StaticData.instance().getCommonCards() : StaticData.instance().getVariantCards();
         if (includeSet) {
-            cntPictures = db.getArtCount(card.getName(), edition, cp.getFunctionalVariant());
-            hasManyPictures = cntPictures > 1;
-        } else {
-            cntPictures = 1;
-            // raise the art index limit to the maximum of the sets this card was printed in
-            int maxCntPictures = db.getMaxArtIndex(card.getName());
-            hasManyPictures = maxCntPictures > 1;
+            s.append(cp.getEdition());
+            s.append("/");
         }
 
-        int artIdx = cp.getArtIndex() - 1;
-        if (hasManyPictures) {
-            if (cntPictures <= artIdx) // prevent overflow
-                artIdx = artIdx % cntPictures;
-            s.append(artIdx + 1);
-        }
-
-        // for whatever reason, MWS-named plane cards don't have the ".full" infix
-        if (!card.getType().isPlane() && !card.getType().isPhenomenon()) {
-            s.append(".full");
-        }
+        s.append(toMWSFilename(nameToUse));
+        s.append('.');
+        s.append(cp.getCollectorNumber());
+        s.append(".full");
 
         String fname;
         if (isDownloadUrl) {
@@ -98,14 +79,7 @@ public class ImageUtil {
             fname = s.toString();
         }
 
-        if (includeSet) {
-            String editionAliased = isDownloadUrl ? StaticData.instance().getEditions().getCode2ByCode(edition) : ImageKeys.getSetFolder(edition);
-            if (editionAliased == "") //FIXME: Custom Cards Workaround
-                editionAliased = edition;
-            return TextUtil.concatNoSpace(editionAliased, "/", fname);
-        } else {
-            return fname;
-        }
+        return fname;
     }
 
     public static String getNameToUse(PaperCard cp, String face) {
@@ -164,7 +138,7 @@ public class ImageUtil {
 
     public static String getScryfallDownloadUrl(PaperCard cp, String face, String setCode, String langCode, boolean useArtCrop, boolean hyphenateAlchemy){
         String editionCode;
-        if ((setCode != null) && (setCode.length() > 0))
+        if (setCode != null && !setCode.isEmpty())
             editionCode = setCode;
         else
             editionCode = cp.getEdition().toLowerCase();
@@ -203,8 +177,7 @@ public class ImageUtil {
         char c;
         for (int i = 0; i < in.length(); i++) {
             c = in.charAt(i);
-            if ((c == '"') || (c == '/') || (c == ':') || (c == '?')) {
-            } else {
+            if(c != '"' && c != '/' && c != ':' && c != '?'){
                 out.append(c);
             }
         }
