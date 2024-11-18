@@ -78,19 +78,15 @@ public class CCombat implements ICDoc {
         }
 
         display.append("\n");
-        PlayerView controller = null;
         if (defender instanceof CardView) {
-            controller = ((CardView) defender).getController();
+            PlayerView controller = ((CardView) defender).getController();
             if (controller == null)
                 //shouldn't be null but display card's + controller ie Black Knight's controller
                 display.append(Lang.getInstance().getPossesive(defender.getName())).append(" controller");
             else
                 display.append(Lang.getInstance().getPossesive(controller.getName())).append(" ");
         }
-        if (controller == null)
-            display.append(" is attacked by:\n");
-        else
-            display.append(defender).append(" is attacked by:\n");
+        display.append(defender).append(" is attacked by:\n");
 
         // Associate Bands, Attackers Blockers
         boolean previousBand = false;
