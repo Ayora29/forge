@@ -1,5 +1,5 @@
 [metadata]
-Code=MED
+Code=ME1
 Date=2007-09-10
 Name=Masters Edition
 Code2=MED

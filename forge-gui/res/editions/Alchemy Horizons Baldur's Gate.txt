@@ -276,26 +276,26 @@ ScryfallCode=HBG
 264 C Prophetic Prism @Diego Gisbert
 265 C Spiked Pit Trap @Deruchenko Alexander
 266 R Baldur's Gate @Titus Lunter
-267 L Plains @Bruce Brenneise
-268 L Plains @Leanna Crossan
-269 L Plains @Titus Lunter
-270 L Plains @Emmanuel Shiu
-271 L Island @Bruce Brenneise
-272 L Island @Piotr Dura
-273 L Island @James Paick
-274 L Island @Sam White
-275 L Swamp @Piotr Dura
-276 L Swamp @Logan Feliciano
-277 L Swamp @Grady Frederick
-278 L Swamp @Sam White
-279 L Mountain @Matt Gaser
-280 L Mountain @Lucas Graciano
-281 L Mountain @Muhammad Firdaus
-282 L Mountain @Sam White
-283 L Forest @Bruce Brenneise
-284 L Forest @Muhammad Firdaus
-285 L Forest @Lucas Graciano
-286 L Forest @Julian Kok Joon Wen
+289 L Plains @Bruce Brenneise
+290 L Plains @Leanna Crossan
+291 L Plains @Titus Lunter
+292 L Plains @Emmanuel Shiu
+293 L Island @Bruce Brenneise
+294 L Island @Piotr Dura
+295 L Island @James Paick
+296 L Island @Sam White
+297 L Swamp @Piotr Dura
+298 L Swamp @Logan Feliciano
+299 L Swamp @Grady Frederick
+300 L Swamp @Sam White
+301 L Mountain @Matt Gaser
+302 L Mountain @Lucas Graciano
+303 L Mountain @Muhammad Firdaus
+304 L Mountain @Sam White
+305 L Forest @Bruce Brenneise
+306 L Forest @Muhammad Firdaus
+307 L Forest @Lucas Graciano
+308 L Forest @Julian Kok Joon Wen
 
 [rebalanced]
 A85 C A-Blessed Hippogriff @Leanna Crossan
@@ -321,22 +321,20 @@ A208 C A-Druidic Ritual @Vincent Christiaens
 A209 R A-Earthquake Dragon @Johan Grenier
 A210 U A-Emerald Dragon @Diego Gisbert
 A215 U A-Jade Orb of Dragonkind @Olena Richards
-A217 R A-Monster Manual @David Gaillet
 A223 U A-Split the Spoils @Edgar Sánchez Hidalgo
-A232 R A-Baba Lysaga, Night Witch @Slawomir Maniak
 A239 U A-Krydle of Baldur's Gate @Bryan Sola
 A243 M A-Minsc & Boo, Timeless Heroes @Andreas Zafiratos
 A259 C A-Lantern of Revealing @Eytan Zana
 A262 U A-Navigation Orb @Robin Olausson
 
 [conjured]
-45a R Hag of Ceaseless Torment @Konstantin Porubov
-45b R Hag of Dark Duress @Konstantin Porubov
-45c R Hag of Death's Legion @Konstantin Porubov
-45d R Hag of Inner Weakness @Konstantin Porubov
-45e R Hag of Mage's Doom @Konstantin Porubov
-45f R Hag of Noxious Nightmares @Konstantin Porubov
-45g R Hag of Scoured Thoughts @Konstantin Porubov
-45h R Hag of Syphoned Breath @Konstantin Porubov
-45i R Hag of Twisted Visions @Konstantin Porubov
+H17 R Hag of Ceaseless Torment @Konstantin Porubov
+H18 R Hag of Dark Duress @Konstantin Porubov
+H19 R Hag of Death's Legion @Konstantin Porubov
+H20 R Hag of Inner Weakness @Konstantin Porubov
+H21 R Hag of Mage's Doom @Konstantin Porubov
+H22 R Hag of Noxious Nightmares @Konstantin Porubov
+H23 R Hag of Scoured Thoughts @Konstantin Porubov
+H24 R Hag of Syphoned Breath @Konstantin Porubov
+H25 R Hag of Twisted Visions @Konstantin Porubov
 

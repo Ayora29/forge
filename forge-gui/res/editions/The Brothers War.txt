@@ -173,7 +173,7 @@ ScryfallCode=BRO
 160 U Heavyweight Demolisher @Svetlin Velinov
 161 C Mishra's Juggernaut @Steve Prescott
 162 U Mishra's Research Desk @Matt Stewart
-163 R Phyrexian Dragon Engine @Chris Rahn
+163a R Phyrexian Dragon Engine @Chris Rahn
 164 C Scrapwork Mutt @Sidharth Chaturvedi
 165 M Skitterbeam Battalion @Leon Tukker
 166 U Alloy Animist @Kim Sokol
@@ -248,7 +248,7 @@ ScryfallCode=BRO
 235 C Goblin Firebomb @Noah Thatcher
 236 U Levitating Statue @Artur Nakhodkin
 237 R Liberator, Urza's Battlethopter @Ekaterina Burmak
-238 R The Mightstone and Weakstone @Ryan Pancoast
+238a R The Mightstone and Weakstone @Ryan Pancoast
 239 C Mine Worker @Raoul Vitale
 240 M Portal to Phyrexia @Svetlin Velinov
 241 C Power Plant Worker @Aaron Miller
@@ -266,7 +266,7 @@ ScryfallCode=BRO
 253 U Thran Power Suit @Raf Kayupov
 254 R Thran Spider @Joshua Cairos
 255 C Tower Worker @Gaboleps
-256 R Argoth, Sanctum of Nature @Cristi Balanescu
+256a R Argoth, Sanctum of Nature @Cristi Balanescu
 257 R Battlefield Forge @Thomas Stoop
 258 R Blast Zone @Jorge Jacinto
 259 R Brushland @Thomas Stoop

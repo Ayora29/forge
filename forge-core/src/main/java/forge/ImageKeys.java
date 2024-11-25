@@ -53,6 +53,8 @@ public final class ImageKeys {
 
     private static final Map<String, File> cachedCards = new HashMap<>(1000);
 
+    public static HashSet<String> missingCards = new HashSet<>();
+
     //shortcut for determining if a card image exists for a given card
     //should only be called from PaperCard.hasImage()
     private static final HashMap<String, Set<String>> cachedContent = new HashMap<>(600);

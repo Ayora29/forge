@@ -333,6 +333,8 @@ ScryfallCode=DSC
 325 R Witch's Clinic @Piotr Dura
 326 R Woodland Cemetery @Lars Grant-West
 327 R Yavimaya Coast @Jesper Ejsing
+
+[scheme]
 328 C Behold the Power of Destruction @Alix Branwyn
 329 C Chaos Is My Plaything @Alix Branwyn
 330 C Choose Your Champion @Pavel Kolomeyets
@@ -373,6 +375,8 @@ ScryfallCode=DSC
 365 C Your Nightmares Are Delicious @Lars Grant-West
 366 C Your Own Face Mocks You @Dominik Mayer
 367 C Your Plans Mean Nothing @Fernando Falcone
+
+[promo]
 368 M Crypt Ghast @Tim Jacobus
 369 M Damn @Tim Jacobus
 370 M Exhume @Tim Jacobus

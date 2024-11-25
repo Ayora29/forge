@@ -419,7 +419,6 @@ ScryfallCode=ZNR
 391 U Kargan Warleader @Colin Boyer
 
 [rebalanced]
-A24 R A-Luminarch Aspirant @Mads Ahm
 A68 R A-Master of Winds @Yigit Koroglu
 A105 C A-Hagra Constrictor @Simon Dominic
 A126 U A-Skyclave Shadowcat @Simon Dominic
