@@ -1,6 +1,5 @@
 package forge.ai;
 
-import com.google.common.base.Predicates;
 import com.google.common.collect.Lists;
 
 import forge.ai.AiCardMemory.MemorySet;
@@ -48,6 +47,14 @@ public class AiCostDecision extends CostDecisionMakerBase {
     }
 
     @Override
+    public PaymentDecision visit(CostBehold cost) {
+        final String type = cost.getType();
+        CardCollectionView hand = player.getCardsIn(cost.getRevealFrom());
+        hand = CardLists.getValidCards(hand, type.split(";"), player, source, ability);
+        return hand.isEmpty() ? null : PaymentDecision.card(getBestCreatureAI(hand));
+    }
+
+    @Override
     public PaymentDecision visit(CostChooseColor cost) {
         int c = cost.getAbilityAmount(ability);
         List<String> choices = player.getController().chooseColors("Color", ability, c, c,
@@ -57,8 +64,7 @@ public class AiCostDecision extends CostDecisionMakerBase {
 
     @Override
     public PaymentDecision visit(CostChooseCreatureType cost) {
-        String choice = player.getController().chooseSomeType("Creature", ability, CardType.getAllCreatureTypes(),
-                Lists.newArrayList());
+        String choice = player.getController().chooseSomeType("Creature", ability, CardType.getAllCreatureTypes());
         return PaymentDecision.type(choice);
     }
 
@@ -111,13 +117,13 @@ public class AiCostDecision extends CostDecisionMakerBase {
                 Card chosen;
                 if (!discardMe.isEmpty()) {
                     chosen = Aggregates.random(discardMe);
-                    discardMe = CardLists.filter(discardMe, Predicates.not(CardPredicates.sharesNameWith(chosen)));
+                    discardMe = CardLists.filter(discardMe, CardPredicates.sharesNameWith(chosen).negate());
                 } else {
                     final Card worst = ComputerUtilCard.getWorstAI(hand);
                     chosen = worst != null ? worst : Aggregates.random(hand);
                 }
                 differentNames.add(chosen);
-                hand = CardLists.filter(hand, Predicates.not(CardPredicates.sharesNameWith(chosen)));
+                hand = CardLists.filter(hand, CardPredicates.sharesNameWith(chosen).negate());
                 c--;
             }
             return PaymentDecision.card(differentNames);

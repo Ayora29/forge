@@ -17,15 +17,14 @@
  */
 package forge.util;
 
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
+import org.apache.commons.lang3.StringUtils;
+
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.*;
 import java.util.regex.Pattern;
-
-import org.apache.commons.lang3.StringUtils;
-
-import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.Table;
 
 /**
  * Parse text file to extract [sections] and key/value data.
@@ -47,6 +46,7 @@ public class FileSection {
     public static final Pattern ARROW_KV_SEPARATOR = Pattern.compile(Pattern.quote("->"));
     public static final Pattern EQUALS_KV_SEPARATOR = Pattern.compile(Pattern.quote("="));
     public static final Pattern COLON_KV_SEPARATOR = Pattern.compile(Pattern.quote(":"));
+
     private static final String BAR_PAIR_SPLITTER = Pattern.quote("|");
 
     private static final Table<String, Pattern, Map<String, String>> parseToMapCache = HashBasedTable.create();
@@ -102,27 +102,25 @@ public class FileSection {
      */
     public static Map<String, List<String>> parseSections(final List<String> lines) {
         final Map<String, List<String>> result = new LinkedHashMap<>();
-        int lineNumber = 0;
         String section = null;
 
-        do{
-            String line = lines.get(lineNumber++);
-            if (line.startsWith("[") && line.endsWith("]")) {
-                section = line.substring(1, line.length() - 1);
-                if(!result.containsKey(section)) {
-                    result.put(section, new ArrayList<>());
+        if(null != lines && !lines.isEmpty()){
+            for(String l : lines) {
+                String line = l.trim();
+                if (line.startsWith("#")) continue;
+                if (line.startsWith("[") && line.endsWith("]")) {
+                    section = line.substring(1, line.length() - 1);
+                    if (!result.containsKey(section)) {
+                        result.put(section, new ArrayList<>());
+                    }
+                } else if (null != section && !line.isEmpty()) {
+                    result.get(section).add(line);
                 }
             }
-            else if(null != section && !line.isEmpty() && !line.startsWith("#")){
-                result.get(section).add(line);
-            }
         }
-        while(lineNumber<lines.size());
 
         return result;
     }
-
-
 
     public String get(final String fieldName) {
         return this.lines.get(fieldName);

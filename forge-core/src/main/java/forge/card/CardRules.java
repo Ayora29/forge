@@ -17,20 +17,18 @@
  */
 package forge.card;
 
-import java.util.*;
-
-import com.google.common.collect.Lists;
-import org.apache.commons.lang3.StringUtils;
-
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-
 import forge.card.mana.IParserManaCost;
 import forge.card.mana.ManaCost;
 import forge.card.mana.ManaCostShard;
 import forge.util.TextUtil;
+import org.apache.commons.lang3.StringUtils;
 
-import static forge.card.MagicColor.Constant.*;
+import java.util.*;
+
+import static forge.card.MagicColor.Constant.BASIC_LANDS;
 import static org.apache.commons.lang3.StringUtils.containsIgnoreCase;
 
 /**
@@ -110,8 +108,12 @@ public final class CardRules implements ICardCharacteristics {
         // CR 903.4 colors defined by its characteristic-defining abilities
         for (String staticAbility : face.getStaticAbilities()) {
             if (staticAbility.contains("CharacteristicDefining$ True") && staticAbility.contains("SetColor$ All")) {
-                res |= MagicColor.ALL_COLORS;
+                return MagicColor.ALL_COLORS;
             }
+        }
+        // no need to check oracle if it is already all colors
+        if (res == MagicColor.ALL_COLORS) {
+            return res;
         }
         int len = oracleText.length();
         for (int i = 0; i < len; i++) {
@@ -140,7 +142,7 @@ public final class CardRules implements ICardCharacteristics {
     public boolean isVariant() {
         CardType t = getType();
         return t.isVanguard() || t.isScheme() || t.isPlane() || t.isPhenomenon()
-                || t.isConspiracy() || t.isDungeon() || t.isAttraction();
+                || t.isConspiracy() || t.isDungeon() || t.isAttraction() || t.isContraption();
     }
 
     public CardSplitType getSplitType() {
@@ -283,14 +285,7 @@ public final class CardRules implements ICardCharacteristics {
             return true;
         }
         CardType type = mainPart.getType();
-        boolean creature = type.isCreature();
-        for (String staticAbility : mainPart.getStaticAbilities()) { // Check for Grist
-            if (staticAbility.contains("CharacteristicDefining$ True") && staticAbility.contains("AddType$ Creature")) {
-                creature = true;
-                break;
-            }
-        }
-        if (type.isLegendary() && creature) {
+        if (type.isLegendary() && canBeCreature()) {
             return true;
         }
         return false;
@@ -358,15 +353,8 @@ public final class CardRules implements ICardCharacteristics {
         if (!type.isLegendary()) {
             return false;
         }
-        if (type.isCreature() || type.isPlaneswalker()) {
+        if (canBeCreature() || type.isPlaneswalker()) {
             return true;
-        }
-
-        // Grist is checked above, but new cards might work this way
-        for (String staticAbility : mainPart.getStaticAbilities()) {
-            if (staticAbility.contains("CharacteristicDefining$ True") && staticAbility.contains("AddType$ Creature")) {
-                return true;
-            }
         }
         return false;
     }
@@ -376,12 +364,18 @@ public final class CardRules implements ICardCharacteristics {
         if (!type.isLegendary()) {
             return false;
         }
-        if (type.isCreature() || type.isPlaneswalker()) {
+        if (canBeCreature() || type.isPlaneswalker()) {
             return true;
         }
+        return false;
+    }
 
-        // Grist is checked above, but new cards might work this way
-        for (String staticAbility : mainPart.getStaticAbilities()) {
+    public boolean canBeCreature() {
+        CardType type = mainPart.getType();
+        if (type.isCreature()) {
+            return true;
+        }
+        for (String staticAbility : mainPart.getStaticAbilities()) { // Check for Grist
             if (staticAbility.contains("CharacteristicDefining$ True") && staticAbility.contains("AddType$ Creature")) {
                 return true;
             }

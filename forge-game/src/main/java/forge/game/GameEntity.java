@@ -22,7 +22,6 @@ import java.util.Map;
 
 import org.apache.commons.lang3.tuple.Pair;
 
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
@@ -144,7 +143,7 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
 
     public final CardCollectionView getEnchantedBy() {
         // enchanted means attached by Aura
-        return CardLists.filter(getAttachedCards(), CardPredicates.Presets.AURA);
+        return CardLists.filter(getAttachedCards(), CardPredicates.AURA);
     }
 
     // doesn't include phased out cards
@@ -176,7 +175,7 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
 
     public final boolean isEnchanted() {
         // enchanted means attached by Aura
-        return Iterables.any(getAttachedCards(), CardPredicates.Presets.AURA);
+        return getAttachedCards().anyMatch(CardPredicates.AURA);
     }
 
     public final boolean hasCardAttachment(Card c) {
@@ -188,7 +187,7 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
     }
 
     public final boolean hasCardAttachment(final String cardName) {
-        return Iterables.any(getAttachedCards(), CardPredicates.nameEquals(cardName));
+        return getAttachedCards().anyMatch(CardPredicates.nameEquals(cardName));
     }
     public final boolean isEnchantedBy(final String cardName) {
         // Rule 303.4k  Even if c is no Aura it still counts
@@ -319,11 +318,20 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
         return canReceiveCounters(CounterType.get(type));
     }
 
-    public final void addCounter(final CounterType counterType, final int n, final Player source, GameEntityCounterTable table) {
+    public final void addCounter(final CounterType counterType, int n, final Player source, GameEntityCounterTable table) {
         if (n <= 0 || !canReceiveCounters(counterType)) {
             // As per rule 107.1b
             return;
         }
+
+        Integer max = getCounterMax(counterType);
+        if (max != null) {
+            n = Math.min(n, max - getCounters(counterType));
+            if (n <= 0) {
+                return;
+            }
+        }
+
         // doesn't really add counters, but is just a helper to add them to the Table
         // so the Table can handle the Replacement Effect
         table.put(source, this, counterType, n);
@@ -340,6 +348,9 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
     abstract public void addCounterInternal(final CounterType counterType, final int n, final Player source, final boolean fireEvents, GameEntityCounterTable table, Map<AbilityKey, Object> params);
     public void addCounterInternal(final CounterEnumType counterType, final int n, final Player source, final boolean fireEvents, GameEntityCounterTable table, Map<AbilityKey, Object> params) {
         addCounterInternal(CounterType.get(counterType), n, source, fireEvents, table, params);
+    }
+    public Integer getCounterMax(final CounterType counterType) {
+        return null;
     }
 
     public List<Pair<Integer, Boolean>> getDamageReceivedThisTurn() {

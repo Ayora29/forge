@@ -244,6 +244,14 @@ public class SettingsPage extends TabPage<SettingsScreen> {
                 Forge.getLocalizer().getMessage("cbExperimentalRestore"),
                 Forge.getLocalizer().getMessage("nlExperimentalRestore")),
                 1);
+        lstSettings.addItem(new CustomSelectSetting(FPref.MATCH_AI_TIMEOUT, Forge.getLocalizer().getMessage("cbAITimeout"),
+                Forge.getLocalizer().getMessage("nlAITimeout"),
+                Lists.newArrayList("5", "10", "60", "120", "240", "300", "600")),
+                1);
+        lstSettings.addItem(new BooleanSetting(FPref.UI_ORDER_HAND,
+                Forge.getLocalizer().getMessage("cbOrderHand"),
+                Forge.getLocalizer().getMessage("nlOrderHand")),
+        1);
         lstSettings.addItem(new BooleanSetting(FPref.FILTERED_HANDS,
                 Forge.getLocalizer().getMessage("cbFilteredHands"),
                 Forge.getLocalizer().getMessage("nlFilteredHands")),
@@ -251,10 +259,6 @@ public class SettingsPage extends TabPage<SettingsScreen> {
         lstSettings.addItem(new BooleanSetting(FPref.UI_CLONE_MODE_SOURCE,
                 Forge.getLocalizer().getMessage("cbCloneImgSource"),
                 Forge.getLocalizer().getMessage("nlCloneImgSource")),
-                1);
-        lstSettings.addItem(new BooleanSetting(FPref.MATCHPREF_PROMPT_FREE_BLOCKS,
-                Forge.getLocalizer().getMessage("cbPromptFreeBlocks"),
-                Forge.getLocalizer().getMessage("nlPromptFreeBlocks")),
                 1);
         lstSettings.addItem(new BooleanSetting(FPref.UI_DETAILED_SPELLDESC_IN_PROMPT,
                 Forge.getLocalizer().getMessage("cbDetailedPaymentDesc"),
@@ -322,6 +326,10 @@ public class SettingsPage extends TabPage<SettingsScreen> {
                 Forge.animatedCardTapUntap = FModel.getPreferences().getPrefBoolean(FPref.UI_ANIMATED_CARD_TAPUNTAP);
             }
         },1);
+        lstSettings.addItem(new BooleanSetting(FPref.UI_STACK_CREATURES,
+                        Forge.getLocalizer().getMessage("cbStackCreatures"),
+                        Forge.getLocalizer().getMessage("nlStackCreatures")),
+                1);
 
         //Random Deck Generation
         lstSettings.addItem(new BooleanSetting(FPref.DECKGEN_NOSMALL,

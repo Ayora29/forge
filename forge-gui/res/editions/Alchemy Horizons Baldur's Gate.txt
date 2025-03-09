@@ -321,20 +321,22 @@ A208 C A-Druidic Ritual @Vincent Christiaens
 A209 R A-Earthquake Dragon @Johan Grenier
 A210 U A-Emerald Dragon @Diego Gisbert
 A215 U A-Jade Orb of Dragonkind @Olena Richards
+A217 R A-Monster Manual @David Gaillet
 A223 U A-Split the Spoils @Edgar Sánchez Hidalgo
+A232 R A-Baba Lysaga, Night Witch @Slawomir Maniak
 A239 U A-Krydle of Baldur's Gate @Bryan Sola
 A243 M A-Minsc & Boo, Timeless Heroes @Andreas Zafiratos
 A259 C A-Lantern of Revealing @Eytan Zana
 A262 U A-Navigation Orb @Robin Olausson
 
 [conjured]
-H17 R Hag of Ceaseless Torment @Konstantin Porubov
-H18 R Hag of Dark Duress @Konstantin Porubov
-H19 R Hag of Death's Legion @Konstantin Porubov
-H20 R Hag of Inner Weakness @Konstantin Porubov
-H21 R Hag of Mage's Doom @Konstantin Porubov
-H22 R Hag of Noxious Nightmares @Konstantin Porubov
-H23 R Hag of Scoured Thoughts @Konstantin Porubov
-H24 R Hag of Syphoned Breath @Konstantin Porubov
-H25 R Hag of Twisted Visions @Konstantin Porubov
+45a R Hag of Ceaseless Torment @Konstantin Porubov
+45b R Hag of Dark Duress @Konstantin Porubov
+45c R Hag of Death's Legion @Konstantin Porubov
+45d R Hag of Inner Weakness @Konstantin Porubov
+45e R Hag of Mage's Doom @Konstantin Porubov
+45f R Hag of Noxious Nightmares @Konstantin Porubov
+45g R Hag of Scoured Thoughts @Konstantin Porubov
+45h R Hag of Syphoned Breath @Konstantin Porubov
+45i R Hag of Twisted Visions @Konstantin Porubov
 

@@ -32,7 +32,6 @@ import forge.assets.FSkinColor.Colors;
 import forge.assets.FSkinTexture;
 import forge.game.GameView;
 import forge.game.card.CardView;
-import forge.game.combat.CombatView;
 import forge.game.phase.PhaseType;
 import forge.game.player.PlayerView;
 import forge.game.zone.ZoneType;
@@ -53,7 +52,6 @@ import forge.screens.match.views.VCardDisplayArea.CardAreaPanel;
 import forge.screens.match.views.VDevMenu;
 import forge.screens.match.views.VGameMenu;
 import forge.screens.match.views.VLog;
-import forge.screens.match.views.VManaPool;
 import forge.screens.match.views.VPhaseIndicator.PhaseLabel;
 import forge.screens.match.views.VPlayerPanel;
 import forge.screens.match.views.VPlayerPanel.InfoTab;
@@ -90,6 +88,11 @@ public class MatchScreen extends FScreen {
     private ViewWinLose viewWinLose = null;
     private static List<FDisplayObject> potentialListener;
     private int selectedPlayer;
+
+
+    private final Map<Integer, Vector2> endpoints;
+    private final Set<CardView> cardsonBattlefield;
+    private final Set<PlayerView> playerViewSet;
 
     public MatchScreen(List<VPlayerPanel> playerPanels0) {
         super(new FMenuBar());
@@ -164,6 +167,9 @@ public class MatchScreen extends FScreen {
             log.setMenuTab(new HiddenMenuTab(log));
             devMenu.setMenuTab(new HiddenMenuTab(devMenu));
         }
+        endpoints = new HashMap<>();
+        cardsonBattlefield  = new HashSet<>();
+        playerViewSet = new HashSet<>();
     }
 
     private boolean is4Player() {
@@ -458,11 +464,13 @@ public class MatchScreen extends FScreen {
     }
 
     void drawArcs(Graphics g) {
-        //get all card targeting arrow origins on the battlefield
-        final Map<Integer, Vector2> endpoints = new HashMap<>();
-        final Set<CardView> cardsonBattlefield = new HashSet<>();
-        final Set<PlayerView> playerViewSet = new HashSet<>();
         final GameView game = MatchController.instance.getGameView();
+        if (game == null)
+            return;
+        //get all card targeting arrow origins on the battlefield
+        endpoints.clear();
+        cardsonBattlefield.clear();
+        playerViewSet.clear();
         try {
             for (PlayerView p : game.getPlayers()) {
                 if (p == null)
@@ -488,13 +496,8 @@ public class MatchScreen extends FScreen {
             }
             if (endpoints.isEmpty())
                 return;
-            //draw arrows for combat
-            final CombatView combat = game.getCombat();
-            for (CardView c : cardsonBattlefield) {
-                TargetingOverlay.assembleArrows(g, c, endpoints, combat, playerViewSet);
-            }
-        } catch (Exception ignored) {
-        }
+            TargetingOverlay.assembleArrows(g, cardsonBattlefield, endpoints, game.getCombat(), playerViewSet);
+        } catch (Exception ignored) {}
     }
 
     @Override
@@ -773,18 +776,13 @@ public class MatchScreen extends FScreen {
             for (CardAreaPanel p : playerPanel.getField().getCardPanels()) {
                 p.reset();
             }
-            playerPanel.getZoneTab(ZoneType.Hand).getDisplayArea().clear();
-            playerPanel.getZoneTab(ZoneType.Library).getDisplayArea().clear();
-            playerPanel.getZoneTab(ZoneType.Graveyard).getDisplayArea().clear();
-            playerPanel.getZoneTab(ZoneType.Exile).getDisplayArea().clear();
-
+            playerPanel.resetZoneTabs();
         }
     }
 
     public void forceRevalidate() {
         for (VPlayerPanel playerPanel : getPlayerPanels().values()) {
             playerPanel.revalidate(true);
-
         }
     }
 
@@ -1132,8 +1130,8 @@ public class MatchScreen extends FScreen {
 
             //build map of all horizontal scroll panes and their current scrollWidths and adjusted X values
             Map<FScrollPane, Pair<Float, Float>> horzScrollPanes = new HashMap<>();
-            backupHorzScrollPanes(topPlayerPanel, x, horzScrollPanes);
-            backupHorzScrollPanes(bottomPlayerPanel, x, horzScrollPanes);
+            backupHorzScrollPanes(topPlayerPanel, horzScrollPanes);
+            backupHorzScrollPanes(bottomPlayerPanel, horzScrollPanes);
 
             float zoom = oldScrollHeight / (getHeight() - staticHeight);
             extraHeight += amount * zoom; //scale amount by current zoom
@@ -1161,20 +1159,9 @@ public class MatchScreen extends FScreen {
             return true;
         }
 
-        private void backupHorzScrollPanes(VPlayerPanel playerPanel, float x, Map<FScrollPane, Pair<Float, Float>> horzScrollPanes) {
-            backupHorzScrollPane(playerPanel.getField().getRow1(), x, horzScrollPanes);
-            backupHorzScrollPane(playerPanel.getField().getRow2(), x, horzScrollPanes);
-            for (InfoTab tab : playerPanel.getTabs()) {
-                if (tab.getDisplayArea() instanceof VManaPool) {
-                    continue; //don't include Mana pool in this
-                }
-                backupHorzScrollPane(tab.getDisplayArea(), x, horzScrollPanes);
-            }
-            backupHorzScrollPane(playerPanel.getCommandZone(), x, horzScrollPanes);
-        }
-
-        private void backupHorzScrollPane(FScrollPane scrollPane, float x, Map<FScrollPane, Pair<Float, Float>> horzScrollPanes) {
-            horzScrollPanes.put(scrollPane, Pair.of(scrollPane.getScrollLeft(), scrollPane.getScrollWidth()));
+        private void backupHorzScrollPanes(VPlayerPanel playerPanel, Map<FScrollPane, Pair<Float, Float>> horzScrollPanes) {
+            for(FScrollPane scrollPane : playerPanel.getAllScrollPanes())
+                horzScrollPanes.put(scrollPane, Pair.of(scrollPane.getScrollLeft(), scrollPane.getScrollWidth()));
         }
     }
 

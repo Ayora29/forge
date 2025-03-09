@@ -129,6 +129,13 @@ public class ForgeScript {
                 }
             }
             return false;
+        } else if (property.equals("hasActivatedAbilityWithExhaust")) {
+            for (final SpellAbility sa : cardState.getSpellAbilities()) {
+                if (sa.isActivatedAbility() && sa.hasParam("Exhaust")) {
+                    return true;
+                }
+            }
+            return false;
         } else if (property.equals("hasActivatedAbility")) {
             for (final SpellAbility sa : cardState.getSpellAbilities()) {
                 if (sa.isActivatedAbility()) {
@@ -204,6 +211,8 @@ public class ForgeScript {
             return sa.isCraft();
         } else if (property.equals("Crew")) {
             return sa.isCrew();
+        } else if (property.equals("Saddle")) {
+            return sa.isKeyword(Keyword.SADDLE);
         } else if (property.equals("Cycling")) {
             return sa.isCycling();
         } else if (property.equals("Dash")) {
@@ -240,6 +249,8 @@ public class ForgeScript {
             return sa.isEquip();
         } else if (property.equals("Boast")) {
             return sa.isBoast();
+        } else if (property.equals("Exhaust")) {
+            return sa.isExhaust();
         } else if (property.equals("Mutate")) {
             return sa.isMutate();
         } else if (property.equals("Ninjutsu")) {
@@ -374,7 +385,7 @@ public class ForgeScript {
             if (sa.isManaAbilityFor(paidFor, colorCanUse)) {
                 return false;
             }
-        } else if(property.equals("NamedSpell")) {
+        } else if (property.equals("NamedSpell")) {
             boolean found = false;
             for (String name : source.getNamedCards()) {
                 if (sa.cardState.getName().equals(name)) {
