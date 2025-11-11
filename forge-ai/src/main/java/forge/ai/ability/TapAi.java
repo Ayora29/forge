@@ -19,7 +19,7 @@ import forge.util.collect.FCollectionView;
 
 public class TapAi extends TapAiBase {
     @Override
-    protected boolean canPlayAI(Player ai, SpellAbility sa) {
+    protected AiAbilityDecision checkApiLogic(Player ai, SpellAbility sa) {
         final PhaseHandler phase = ai.getGame().getPhaseHandler();
         final Player turn = phase.getPlayerTurn();
 
@@ -30,22 +30,16 @@ public class TapAi extends TapAiBase {
                 // Cast it if it's a sorcery.
             } else if (phase.getPhase().isBefore(PhaseType.COMBAT_DECLARE_BLOCKERS)) {
                 // Aggro Brains are willing to use TapEffects aggressively instead of defensively
-                AiController aic = ((PlayerControllerAi) ai.getController()).getAi();
-                if (!aic.getBooleanProperty(AiProps.PLAY_AGGRO)) {
-                    return false;
+                if (!AiProfileUtil.getBoolProperty(ai, AiProps.PLAY_AGGRO)) {
+                    return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
                 }
             } else {
                 // Don't tap down after blockers
-                return false;
+                return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
             }
         } else if (!playReusable(ai, sa)) {
             // Generally don't want to tap things with an Instant during Players turn outside of combat
-            return false;
-        }
-
-        // prevent run-away activations - first time will always return true
-        if (ComputerUtil.preventRunAwayActivations(sa)) {
-            return false;
+            return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
         }
 
         final Card source = sa.getHostCard();
@@ -58,10 +52,6 @@ public class TapAi extends TapAiBase {
             return SpecialCardAi.Arena.consider(ai, sa);
         }
 
-        if (!ComputerUtilCost.checkDiscardCost(ai, abCost, source, sa)) {
-            return false;
-        }
-
         if (!sa.usesTargeting()) {
             CardCollection untap;
             if (sa.hasParam("CardChoices")) {
@@ -70,12 +60,18 @@ public class TapAi extends TapAiBase {
                 untap = AbilityUtils.getDefinedCards(source, sa.getParam("Defined"), sa);
             }
 
-            boolean bFlag = false;
+            int value = 0;
             for (final Card c : untap) {
-                bFlag |= c.isUntapped();
+                if (c.isUntapped()) {
+                    value += ComputerUtilCard.evaluateCreature(c);
+                }
             }
 
-            return bFlag;
+            if (value > 0) {
+                return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
+            } else {
+                return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
+            }
         } else {
             // X controls the minimum targets
             if ("X".equals(sa.getTargetRestrictions().getMinTargets()) && sa.getSVar("X").equals("Count$xPaid")) {
@@ -85,7 +81,11 @@ public class TapAi extends TapAiBase {
             }
 
             sa.resetTargets();
-            return tapPrefTargeting(ai, source, sa, false);
+            if (tapPrefTargeting(ai, source, sa, false)) {
+                return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
+            } else {
+                return new AiAbilityDecision(0, AiPlayDecision.TargetingFailed);
+            }
         }
     }
 

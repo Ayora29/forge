@@ -16,6 +16,7 @@ public interface CardTypeView extends Iterable<String>, Serializable {
 
     Set<String> getCreatureTypes();
     Set<String> getLandTypes();
+    Set<String> getBattleTypes();
 
     boolean hasStringType(String t);
     boolean hasType(CoreType type);
@@ -63,6 +64,7 @@ public interface CardTypeView extends Iterable<String>, Serializable {
     boolean isSaga();
     boolean isHistoric();
     boolean isOutlaw();
+    boolean isParty();
 
     CardTypeView getTypeWithChanges(Iterable<CardChangedType> changedCardTypes);
 }

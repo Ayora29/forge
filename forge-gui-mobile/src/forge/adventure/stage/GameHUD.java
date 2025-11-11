@@ -20,7 +20,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.Button;
 import com.badlogic.gdx.scenes.scene2d.ui.Dialog;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.Touchpad;
 import com.badlogic.gdx.scenes.scene2d.utils.ActorGestureListener;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
@@ -279,9 +278,11 @@ public class GameHUD extends Stage {
         //map bounds
         if (Controls.actorContainsVector(miniMap, c)) {
             touchpad.setVisible(false);
-
-            if (debugMap)
+            if (mapGroup.isVisible() && debugMap) {
                 WorldStage.getInstance().getPlayerSprite().setPosition(x * WorldSave.getCurrentSave().getWorld().getWidthInPixels(), y * WorldSave.getCurrentSave().getWorld().getHeightInPixels());
+            } else if (!mapGroup.isVisible()) {
+                return false;
+            }
 
             return true;
         }
@@ -302,12 +303,16 @@ public class GameHUD extends Stage {
             return true;
         }
         if (Controls.actorContainsVector(miniMap, c)) {
-            if (debugMap)
+            if (mapGroup.isVisible() && debugMap) {
                 WorldStage.getInstance().getPlayerSprite().setPosition(x * WorldSave.getCurrentSave().getWorld().getWidthInPixels(), y * WorldSave.getCurrentSave().getWorld().getHeightInPixels());
+            } else if (!mapGroup.isVisible()) {
+                // in this case, we want to send an action to the scene, which happens in the caller
+                return false;
+            }
             return true;
         }
         //auto follow touchpad
-        if (GuiBase.isAndroid() && !MapStage.getInstance().getDialogOnlyInput() && !console.isVisible()) {
+        if (GuiBase.isAndroid() && !MapStage.getInstance().isDialogOnlyInput() && !console.isVisible()) {
             if (!(Controls.actorContainsVector(avatar, touch)) // not inside avatar bounds
                     && !(Controls.actorContainsVector(miniMap, touch)) // not inside map bounds
                     && !(Controls.actorContainsVector(gamehud, touch)) //not inside gamehud bounds
@@ -477,8 +482,7 @@ public class GameHUD extends Stage {
                 Current.player().addShards(-data.shardsNeeded);
                 ConsoleCommandInterpreter.getInstance().command(data.commandOnUse);
                 AdventureQuestController.instance().updateItemUsed(data);
-            });
-            button.setStyle(Controls.getSkin().get("menu", TextButton.TextButtonStyle.class));
+            }, "menu");
             abilityButtonMap.add(button);
         }
     }
@@ -681,6 +685,7 @@ public class GameHUD extends Stage {
     }
 
     private void exitDungeonCallback() {
+        MapStage.getInstance().onBeginLeavingDungeon();
         hideDialog(true);
     }
 
@@ -715,12 +720,13 @@ public class GameHUD extends Stage {
     public void showHideMap(boolean visible) {
         transluscent = !visible;
         setAlpha(mapGroup, visible);
+        mapGroup.setVisible(visible);
         setAlpha(hudGroup, visible);
         setAlpha(menuGroup, visible);
         setAlpha(avatarGroup, visible);
 
-        setDisabled(exitToWorldMapActor, !MapStage.getInstance().isInMap(), "[%120][+ExitToWorldMap]", "\uFF0F");
-        setDisabled(bookmarkActor, !MapStage.getInstance().isInMap(), "[%120][+Bookmark]", "\uFF0F");
+        setDisabled(exitToWorldMapActor, !MapStage.getInstance().isInMap(), "[%120][+ExitToWorldMap]", "\u2613");
+        setDisabled(bookmarkActor, !MapStage.getInstance().isInMap(), "[%120][+Bookmark]", "\u2613");
 
         for (TextraButton button : abilityButtonMap) {
             setAlpha(button, visible);
@@ -754,8 +760,10 @@ public class GameHUD extends Stage {
         if (hide) {
             hudGroup.addAction(Actions.fadeOut(0.5f));
             menuGroup.addAction(Actions.fadeOut(0.5f));
-            if (!MapStage.getInstance().isInMap())
+            if (!MapStage.getInstance().isInMap()) {
                 mapGroup.addAction(Actions.fadeOut(0.5f));
+                mapGroup.addAction(Actions.visible(false));
+            }
             if (MapStage.getInstance().isInMap())
                 avatarGroup.addAction(Actions.alpha(0.4f, 0.5f));
             hidden = true;
@@ -764,8 +772,10 @@ public class GameHUD extends Stage {
             avatarGroup.addAction(Actions.alpha(alpha, 0.5f));
             hudGroup.addAction(Actions.alpha(alpha, 0.5f));
             menuGroup.addAction(Actions.alpha(alpha, 0.5f));
-            if (!MapStage.getInstance().isInMap())
+            if (!MapStage.getInstance().isInMap()) {
                 mapGroup.addAction(Actions.fadeIn(0.5f));
+                mapGroup.addAction(Actions.visible(true));
+            }
             hidden = false;
         }
     }
@@ -774,6 +784,7 @@ public class GameHUD extends Stage {
         console.toggle();
         if (console.isVisible()) {
             clearAbility();
+            console.setZIndex(ui.getChildren().size);
         } else {
             updateAbility();
         }
@@ -782,6 +793,12 @@ public class GameHUD extends Stage {
     @Override
     public boolean keyUp(int keycode) {
         ui.pressUp(keycode);
+    
+        Button pressedButton = ui.buttonPressed(keycode);
+        if (pressedButton != null) {
+            pressedButton.fire(eventTouchUp);
+        }
+
         return super.keyUp(keycode);
     }
 
@@ -795,16 +812,17 @@ public class GameHUD extends Stage {
             toggleConsole();
             return true;
         }
-        if (keycode == Input.Keys.BACK) {
+        if (KeyBinding.Back.isPressed(keycode)) {
             if (console.isVisible()) {
                 toggleConsole();
+                return true;
             }
         }
         if (console.isVisible())
             return true;
         Button pressedButton = ui.buttonPressed(keycode);
         if (pressedButton != null) {
-            performTouch(pressedButton);
+            pressedButton.fire(eventTouchDown);
         }
         return super.keyDown(keycode);
     }
@@ -863,7 +881,9 @@ public class GameHUD extends Stage {
         dialog.show(this, Actions.show());
         dialog.setPosition((this.getWidth() - dialog.getWidth()) / 2, (this.getHeight() - dialog.getHeight()) / 2);
         dialogOnlyInput = true;
-        if (Forge.hasGamepad() && !dialogButtonMap.isEmpty())
+        gameStage.hudIsShowingDialog(true);
+        MapStage.getInstance().hudIsShowingDialog(true);
+        if (Forge.hasExternalInput() && !dialogButtonMap.isEmpty())
             this.setKeyboardFocus(dialogButtonMap.first());
     }
 
@@ -873,14 +893,17 @@ public class GameHUD extends Stage {
             @Override
             public boolean act(float v) {
                 if (exitDungeon) {
-                    MapStage.getInstance().exitDungeon(false);
-                    setDisabled(exitToWorldMapActor, true, "[%120][+ExitToWorldMap]", "\uFF0F");
-                    setDisabled(bookmarkActor, true, "[%120][+Bookmark]", "\uFF0F");
+                    MapStage.getInstance().exitDungeon(false, false);
+                    setDisabled(exitToWorldMapActor, true, "[%120][+ExitToWorldMap]", "\u2613");
+                    setDisabled(bookmarkActor, true, "[%120][+Bookmark]", "\u2613");
                 }
                 return true;
             }
         }));
+
         dialogOnlyInput = false;
+        gameStage.hudIsShowingDialog(false);
+        MapStage.getInstance().hudIsShowingDialog(false);
     }
 
     private void selectNextDialogButton() {

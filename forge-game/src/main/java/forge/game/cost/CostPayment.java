@@ -93,12 +93,15 @@ public class CostPayment extends ManaConversionMatrix {
      * @return a boolean.
      */
     public static boolean canPayAdditionalCosts(Cost cost, final SpellAbility ability, final boolean effect) {
+        return canPayAdditionalCosts(cost, ability, effect, ability.getActivatingPlayer());
+    }
+    public static boolean canPayAdditionalCosts(Cost cost, final SpellAbility ability, final boolean effect, final Player payer) {
         if (cost == null) {
             return true;
         }
 
         cost = CostAdjustment.adjust(cost, ability, effect);
-        return cost.canPay(ability, effect);
+        return cost.canPay(ability, payer, effect);
     }
 
     /**
@@ -279,7 +282,7 @@ public class CostPayment extends ManaConversionMatrix {
     private static List<Pair<Mana, Integer>> selectManaToPayFor(final ManaPool manapool, final ManaCostShard shard,
             final SpellAbility saBeingPaidFor, final byte colorsPaid, Map<String, Integer> xManaCostPaidByColor) {
         final List<Pair<Mana, Integer>> weightedOptions = new ArrayList<>();
-        for (final Mana thisMana : manapool) {
+        for (final Mana thisMana : Lists.newArrayList(manapool)) {
             if (shard == ManaCostShard.COLORED_X && !ManaCostBeingPaid.canColoredXShardBePaidByColor(MagicColor.toShortString(thisMana.getColor()), xManaCostPaidByColor)) {
                 continue;
             }

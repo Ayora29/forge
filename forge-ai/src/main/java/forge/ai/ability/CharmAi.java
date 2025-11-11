@@ -9,7 +9,6 @@ import forge.game.player.Player;
 import forge.game.spellability.AbilitySub;
 import forge.game.spellability.SpellAbility;
 import forge.util.Aggregates;
-import forge.util.MyRandom;
 import forge.util.collect.FCollection;
 
 import java.util.Collections;
@@ -18,7 +17,7 @@ import java.util.Map;
 
 public class CharmAi extends SpellAbilityAi {
     @Override
-    protected boolean checkApiLogic(Player ai, SpellAbility sa) {
+    protected AiAbilityDecision checkApiLogic(Player ai, SpellAbility sa) {
         final Card source = sa.getHostCard();
         List<AbilitySub> choices = CharmEffect.makePossibleOptions(sa);
 
@@ -70,10 +69,10 @@ public class CharmAi extends SpellAbilityAi {
                 // Set minimum choices for triggers where chooseMultipleOptionsAi() returns null
                 chosenList = chooseOptionsAi(sa, choices, ai, true, num, min);
                 if (chosenList.isEmpty() && min != 0) {
-                    return false;
+                    return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
                 }
             } else {
-                return false;
+                return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
             }
         }
 
@@ -81,7 +80,7 @@ public class CharmAi extends SpellAbilityAi {
         sa.setChosenList(chosenList);
 
         if (choiceForOpp) {
-            return true;
+            return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
         }
 
         if (sa.isSpell()) {
@@ -89,25 +88,27 @@ public class CharmAi extends SpellAbilityAi {
             CharmEffect.chainAbilities(sa, chosenList);
         }
 
-        // prevent run-away activations - first time will always return true
-        return MyRandom.getRandom().nextFloat() <= Math.pow(.6667, sa.getActivationsThisTurn());
+        return super.checkApiLogic(ai, sa);
     }
 
     private List<AbilitySub> chooseOptionsAi(SpellAbility sa, List<AbilitySub> choices, final Player ai, boolean isTrigger, int num, int min) {
         List<AbilitySub> chosenList = Lists.newArrayList();
         AiController aic = ((PlayerControllerAi) ai.getController()).getAi();
-        boolean allowRepeat = sa.hasParam("CanRepeatModes"); // FIXME: unused for now, the AI doesn't know how to effectively handle repeated choices
+        // TODO unused for now, the AI doesn't know how to effectively handle repeated choices
+        boolean allowRepeat = sa.hasParam("CanRepeatModes");
 
         // Pawprint
         final int pawprintLimit = sa.hasParam("Pawprint") ? AbilityUtils.calculateAmount(sa.getHostCard(), sa.getParam("Pawprint"), sa) : 0;
         if (pawprintLimit > 0) {
-            Collections.reverse(choices); // try to pay for the more expensive subs first
+            // try to pay for the more expensive subs first
+            Collections.reverse(choices);
         }
         int pawprintAmount = 0;
 
         // First pass using standard canPlayAi() for good choices
         for (AbilitySub sub : choices) {
             sub.setActivatingPlayer(ai);
+            // TODO refactor to obtain the AiAbilityDecision instead, then we can check all to sort by value
             if (AiPlayDecision.WillPlay == aic.canPlaySa(sub)) {
                 if (pawprintLimit > 0) {
                     int curPawprintAmount = AbilityUtils.calculateAmount(sub.getHostCard(), sub.getParamOrDefault("Pawprint", "0"), sub);
@@ -118,7 +119,8 @@ public class CharmAi extends SpellAbilityAi {
                 }
                 chosenList.add(sub);
                 if (chosenList.size() == num) {
-                    return chosenList; // maximum choices reached
+                    // maximum choices reached
+                    return chosenList;
                 }
             }
         }
@@ -147,7 +149,8 @@ public class CharmAi extends SpellAbilityAi {
             }
         }
         if (chosenList.size() < min) {
-            chosenList.clear(); // not enough choices
+            // not enough choices
+            chosenList.clear();
         }
         return chosenList;
     }
@@ -276,10 +279,10 @@ public class CharmAi extends SpellAbilityAi {
     }
 
     @Override
-    public boolean chkDrawbackWithSubs(Player aiPlayer, AbilitySub ab) {
+    public AiAbilityDecision chkDrawbackWithSubs(Player aiPlayer, AbilitySub ab) {
         // choices were already targeted
         if (ab.getRootAbility().getChosenList() != null) {
-            return true;
+            return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
         }
         return super.chkDrawbackWithSubs(aiPlayer, ab);
     }

@@ -22,6 +22,7 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
 import com.google.common.eventbus.EventBus;
 import forge.GameCommand;
@@ -414,19 +415,6 @@ public class Game {
     }
 
     /**
-     * Gets the nonactive players who are still fighting to win, in turn order.
-     */
-    public final PlayerCollection getNonactivePlayers() {
-        // Don't use getPlayersInTurnOrder to prevent copying the player collection twice
-        final PlayerCollection players = new PlayerCollection(ingamePlayers);
-        players.remove(phaseHandler.getPlayerTurn());
-        if (!getTurnOrder().isDefaultDirection()) {
-            Collections.reverse(players);
-        }
-        return players;
-    }
-
-    /**
      * Gets the players who participated in match (regardless of outcome).
      * <i>Use this in UI and after match calculations</i>
      */
@@ -743,7 +731,7 @@ public class Game {
             if (!visitor.visitAll(player.getZone(ZoneType.Exile).getCards())) {
                 return;
             }
-            if (!visitor.visitAll(player.getZone(ZoneType.Command).getCards())) {
+            if (!visitor.visitAll(player.getCardsIn(ZoneType.PART_OF_COMMAND_ZONE))) {
                 return;
             }
             if (withSideboard && !visitor.visitAll(player.getZone(ZoneType.Sideboard).getCards())) {
@@ -857,6 +845,8 @@ public class Game {
             p.revealFaceDownCards();
         }
 
+        // TODO free any mindslaves
+
         for (Card c : cards) {
             // CR 800.4d if card is controlled by opponent, LTB should trigger
             if (c.getOwner().equals(p) && c.getController().equals(p)) {
@@ -892,8 +882,6 @@ public class Game {
                         }
                         triggerList.put(c.getZone().getZoneType(), null, c);
                         getAction().ceaseToExist(c, false);
-                        // CR 603.2f owner of trigger source lost game
-                        getTriggerHandler().clearDelayedTrigger(c);
                     }
                 } else {
                     // return stolen permanents
@@ -957,9 +945,9 @@ public class Game {
             // if the player who lost was the Monarch, someone else will be the monarch
             // TODO need to check rules if it should try the next player if able
             if (p.equals(getPhaseHandler().getPlayerTurn())) {
-                getAction().becomeMonarch(getNextPlayerAfter(p), null);
+                getAction().becomeMonarch(getNextPlayerAfter(p), p.getMonarchSet());
             } else {
-                getAction().becomeMonarch(getPhaseHandler().getPlayerTurn(), null);
+                getAction().becomeMonarch(getPhaseHandler().getPlayerTurn(), p.getMonarchSet());
             }
         }
 
@@ -969,9 +957,9 @@ public class Game {
             // If the player who has the initiative leaves the game on their own turn,
             // or the active player left the game at the same time, the next player in turn order takes the initiative.
             if (p.equals(getPhaseHandler().getPlayerTurn())) {
-                getAction().takeInitiative(getNextPlayerAfter(p), null);
+                getAction().takeInitiative(getNextPlayerAfter(p), p.getInitiativeSet());
             } else {
-                getAction().takeInitiative(getPhaseHandler().getPlayerTurn(), null);
+                getAction().takeInitiative(getPhaseHandler().getPlayerTurn(), p.getInitiativeSet());
             }
         }
 
@@ -1206,29 +1194,43 @@ public class Game {
 
     public int getCounterAddedThisTurn(CounterType cType, String validPlayer, String validCard, Card source, Player sourceController, CardTraitBase ctb) {
         int result = 0;
-        if (!countersAddedThisTurn.containsRow(cType)) {
+        Set<CounterType> types = null;
+        if (cType == null) {
+            types = countersAddedThisTurn.rowKeySet();
+        } else if (!countersAddedThisTurn.containsRow(cType)) {
             return result;
+        } else {
+            types = Sets.newHashSet(cType);
         }
-        for (Map.Entry<Player, List<Pair<Card, Integer>>> e : countersAddedThisTurn.row(cType).entrySet()) {
-           if (e.getKey().isValid(validPlayer.split(","), sourceController, source, ctb)) {
-               for (Pair<Card, Integer> p : e.getValue()) {
-                   if (p.getKey().isValid(validCard.split(","), sourceController, source, ctb)) {
-                       result += p.getValue();
-                   }
-               }
-           }
+        for (CounterType type : types) {
+            for (Map.Entry<Player, List<Pair<Card, Integer>>> e : countersAddedThisTurn.row(type).entrySet()) {
+                if (e.getKey().isValid(validPlayer.split(","), sourceController, source, ctb)) {
+                    for (Pair<Card, Integer> p : e.getValue()) {
+                        if (p.getKey().isValid(validCard.split(","), sourceController, source, ctb)) {
+                            result += p.getValue();
+                        }
+                    }
+                }
+            }
         }
         return result;
     }
     public int getCounterAddedThisTurn(CounterType cType, Card card) {
         int result = 0;
-        if (!countersAddedThisTurn.containsRow(cType)) {
+        Set<CounterType> types = null;
+        if (cType == null) {
+            types = countersAddedThisTurn.rowKeySet();
+        } else if (!countersAddedThisTurn.containsRow(cType)) {
             return result;
+        } else {
+            types = Sets.newHashSet(cType);
         }
-        for (List<Pair<Card, Integer>> l : countersAddedThisTurn.row(cType).values()) {
-            for (Pair<Card, Integer> p : l) {
-                if (p.getKey().equalsWithGameTimestamp(card)) {
-                    result += p.getValue();
+        for (CounterType type : types) {
+            for (List<Pair<Card, Integer>> l : countersAddedThisTurn.row(type).values()) {
+                for (Pair<Card, Integer> p : l) {
+                    if (p.getKey().equalsWithGameTimestamp(card)) {
+                        result += p.getValue();
+                    }
                 }
             }
         }
@@ -1288,6 +1290,11 @@ public class Game {
         }
 
         return dmgList;
+    }
+
+    public int getSingleMaxDamageDoneThisTurn() {
+        return globalDamageHistory.stream().flatMap(cdh -> cdh.getAllDmgInstances().stream()).
+                mapToInt(dmg -> dmg.getLeft()).max().orElse(0);
     }
 
     public void addGlobalDamageHistory(CardDamageHistory cdh, Pair<Integer, Boolean> dmg, Card source, GameEntity target) {
@@ -1364,6 +1371,12 @@ public class Game {
         if (!isNeitherDayNorNight())
             fireEvent(new GameEventDayTimeChanged(isDay()));
     }
+
+    public boolean isVoid() {
+        return getLeftBattlefieldThisTurn().stream().anyMatch(c -> !c.isLand()) ||
+                getStack().getSpellsCastThisTurn().stream().anyMatch(s -> s.getCastSA().isWarp());
+    }
+
     public int getAITimeout() {
         return AI_TIMEOUT;
     }

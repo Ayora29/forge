@@ -192,21 +192,22 @@ ScryfallCode=DRC
 184 R Yavimaya Coast @Jesper Ejsing
 
 [tokens]
-b_0_0_zombie_army
-b_2_2_zombie_decayed
-b_4_4_zombie_warrior_vigilance
-c_3_3_a_golem_flying
-c_3_3_a_golem_trample
-c_3_3_a_golem_vigilance
-c_4_4_a_construct
-c_6_6_a_beast
-g_3_3_beast
-nalaar_aetherjet
-u_2_2_shapeshifter_changeling
-w_1_1_zombie
+3 w_1_1_zombie @Bram Sels
+4 u_2_2_shapeshifter_changeling @Filip Burburan
+7 b_2_2_zombie_decayed @Sam White
+8 b_0_0_zombie_army @David Astruga
+9 b_4_4_zombie_warrior_vigilance @Mike Bierek
+10 g_3_3_beast @Jason Felix
+11 c_6_6_a_beast @Sara Winters
+12 c_4_4_a_construct @Craig J Spearing
+13 c_3_3_a_golem_flying @Andrew Mar
+14 c_3_3_a_golem_trample @Andrew Mar
+15 c_3_3_a_golem_vigilance @Andrew Mar
+16 nalaar_aetherjet @Victor Sales
 
 [other]
-embalm_angel_of_sanctions
-embalm_vizier_of_many_faces
-eternalize_champion_of_wits
-eternalize_timeless_dragon
+1 embalm_angel_of_sanctions @Min Yum
+2 embalm_vizier_of_many_faces @Ryan Yee
+5 eternalize_champion_of_wits @Even Amundsen
+6 eternalize_timeless_dragon @Anastasia Ovchinnikova
+17 energy @Liz Leo

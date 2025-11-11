@@ -25,7 +25,7 @@ public class ForgePreferences extends PreferencesStore<ForgePreferences.FPref> {
     /**
      * Preference identifiers and their default values.
      */
-    public enum FPref {
+    public enum FPref implements PreferencesStore.IPref {
         PLAYER_NAME (""),
         CONSTRUCTED_P1_DECK_STATE(""),
         CONSTRUCTED_P2_DECK_STATE(""),
@@ -88,6 +88,7 @@ public class ForgePreferences extends PreferencesStore<ForgePreferences.FPref> {
         UI_SMART_CARD_ART("false"),
         UI_AUTO_AIDECK_SELECTION("true"),
         UI_DISABLE_CARD_IMAGES ("false"),
+        UI_REVERSE_PROMPT_BUTTON ("false"),
         UI_IMAGE_CACHE_MAXIMUM("400"),
         UI_OVERLAY_FOIL_EFFECT ("true"),
         UI_HIDE_REMINDER_TEXT ("false"),
@@ -216,6 +217,7 @@ public class ForgePreferences extends PreferencesStore<ForgePreferences.FPref> {
 
         LOAD_CARD_SCRIPTS_LAZILY ("false"),
         LOAD_ARCHIVED_FORMATS ("false"),
+        PRELOAD_CUSTOM_DRAFTS ("false"),
 
         DECK_DEFAULT_CARD_LIMIT ("4"),
         DECKGEN_SINGLETONS ("false"),
@@ -283,6 +285,7 @@ public class ForgePreferences extends PreferencesStore<ForgePreferences.FPref> {
         SHORTCUT_MACRO_RECORD ("16 82"),
         SHORTCUT_MACRO_NEXT_ACTION ("16 50"),
         SHORTCUT_CARD_ZOOM("90"),
+        LAST_IMPORTED_CUBE_ID(""),
         SHORTCUT_PRESS_BUTTON("32");
 
         private final String strDefaultVal;

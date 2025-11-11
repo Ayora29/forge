@@ -15,6 +15,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import javax.swing.ImageIcon;
@@ -22,6 +23,8 @@ import javax.swing.JFileChooser;
 import javax.swing.SwingUtilities;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jupnp.DefaultUpnpServiceConfiguration;
+import org.jupnp.UpnpServiceConfiguration;
 
 import forge.download.GuiDownloader;
 import forge.error.BugReportDialog;
@@ -51,7 +54,6 @@ import forge.toolbox.FOptionPane;
 import forge.toolbox.FSkin;
 import forge.toolbox.FSkin.SkinImage;
 import forge.util.BuildInfo;
-import forge.util.Callback;
 import forge.util.FileUtil;
 import forge.util.ImageFetcher;
 import forge.util.OperatingSystem;
@@ -59,6 +61,11 @@ import forge.util.SwingImageFetcher;
 
 public class GuiDesktop implements IGuiBase {
     private ImageFetcher imageFetcher = new SwingImageFetcher();
+
+    @Override
+    public UpnpServiceConfiguration getUpnpPlatformService() {
+        return new DefaultUpnpServiceConfiguration();
+    }
 
     @Override
     public boolean isRunningOnDesktop() {
@@ -175,7 +182,7 @@ public class GuiDesktop implements IGuiBase {
     }
 
     @Override
-    public <T> List<T> getChoices(final String message, final int min, final int max, final Collection<T> choices, final T selected, final Function<T, String> display) {
+    public <T> List<T> getChoices(final String message, final int min, final int max, final Collection<T> choices, final Collection<T> selected, final Function<T, String> display) {
         /*if ((choices != null && !choices.isEmpty() && choices.iterator().next() instanceof GameObject) || selected instanceof GameObject) {
             System.err.println("Warning: GameObject passed to GUI! Printing stack trace.");
             Thread.dumpStack();
@@ -257,7 +264,7 @@ public class GuiDesktop implements IGuiBase {
     }
 
     @Override
-    public void download(final GuiDownloadService service, final Callback<Boolean> callback) {
+    public void download(final GuiDownloadService service, final Consumer<Boolean> callback) {
         new GuiDownloader(service, callback).show();
     }
 

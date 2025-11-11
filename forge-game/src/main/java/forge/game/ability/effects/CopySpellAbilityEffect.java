@@ -13,7 +13,6 @@ import forge.game.card.CardFactory;
 import forge.game.player.Player;
 import forge.game.replacement.ReplacementType;
 import forge.game.spellability.SpellAbility;
-import forge.game.staticability.StaticAbilityCantBeCopied;
 import forge.game.zone.ZoneType;
 import forge.util.*;
 import forge.util.collect.FCollection;
@@ -24,6 +23,12 @@ import java.util.Map;
 
 
 public class CopySpellAbilityEffect extends SpellAbilityEffect {
+    @Override
+    public void buildSpellAbility(SpellAbility sa) {
+        if (sa.usesTargeting()) {
+            sa.getTargetRestrictions().setZone(ZoneType.Stack);
+        }
+    }
 
     @Override
     protected String getStackDescription(SpellAbility sa) {
@@ -66,7 +71,7 @@ public class CopySpellAbilityEffect extends SpellAbilityEffect {
 
         List<SpellAbility> tgtSpells = getTargetSpells(sa);
 
-        tgtSpells.removeIf(tgtSA -> StaticAbilityCantBeCopied.cantBeCopied(tgtSA.getHostCard()));
+        tgtSpells.removeIf(SpellAbility::cantBeCopied);
 
         if (tgtSpells.isEmpty() || amount == 0) {
             return;
@@ -87,7 +92,7 @@ public class CopySpellAbilityEffect extends SpellAbilityEffect {
             }
 
             for (SpellAbility chosenSA : copySpells) {
-                if (isOptional && !controller.getController().confirmAction(sa, null, Localizer.getInstance().getMessage("lblDoyouWantCopyTheSpell", CardTranslation.getTranslatedName(chosenSA.getHostCard().getName())), null)) {
+                if (isOptional && !controller.getController().confirmAction(sa, null, Localizer.getInstance().getMessage("lblDoyouWantCopyTheSpell", chosenSA.getHostCard().getTranslatedName()), null)) {
                     continue;
                 }
 

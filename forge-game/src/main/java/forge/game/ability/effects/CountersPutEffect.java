@@ -7,6 +7,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import forge.card.MagicColor;
 import forge.game.Game;
 import forge.game.GameEntity;
 import forge.game.GameEntityCounterTable;
@@ -485,7 +486,7 @@ public class CountersPutEffect extends SpellAbilityEffect {
                         } else {
                             counterAmount = pc.chooseNumber(sa,
                                     Localizer.getInstance().getMessage("lblHowManyCountersThis",
-                                            CardTranslation.getTranslatedName(gameCard.getName())),
+                                            gameCard.getTranslatedName()),
                                     1, counterRemain, params);
                         }
                     }
@@ -528,7 +529,7 @@ public class CountersPutEffect extends SpellAbilityEffect {
 
                         String message = Localizer.getInstance().getMessage(
                                 "lblDoYouWantPutTargetP1P1CountersOnCard", String.valueOf(counterAmount),
-                                CardTranslation.getTranslatedName(gameCard.getName()));
+                                gameCard.getTranslatedName());
                         placer = pc.chooseSingleEntityForEffect(activator.getOpponents(), sa,
                                 Localizer.getInstance().getMessage("lblChooseAnOpponent"), params);
 
@@ -631,7 +632,19 @@ public class CountersPutEffect extends SpellAbilityEffect {
                     return;
                 }
             }
-            resolvePerType(sa, placer, counterType, counterAmount, table, true);
+            if (sa.hasParam("ForColor")) {
+                Iterable<String> oldColors = card.getChosenColors();
+                for (String color : MagicColor.Constant.ONLY_COLORS) {
+                    card.setChosenColors(Lists.newArrayList(color));
+                    if (sa.getOriginalParam("ChoiceTitle") != null) {
+                        sa.getMapParams().put("ChoiceTitle", sa.getOriginalParam("ChoiceTitle").replace("chosenColor", color));
+                    }
+                    resolvePerType(sa, placer, counterType, counterAmount, table, true);
+                }
+                card.setChosenColors(Lists.newArrayList(oldColors));
+            } else {
+                resolvePerType(sa, placer, counterType, counterAmount, table, true);
+            }
         }
 
         table.replaceCounterEffect(game, sa, true);
@@ -708,7 +721,7 @@ public class CountersPutEffect extends SpellAbilityEffect {
 
     protected String logOutput(Map<Object, Integer> randomMap, Card card) {
         StringBuilder randomLog = new StringBuilder();
-        randomLog.append(card.getName()).append(" randomly distributed ");
+        randomLog.append(card.getDisplayName()).append(" randomly distributed ");
         if (randomMap.entrySet().size() == 0) {
             randomLog.append("no counters.");
         } else {

@@ -247,7 +247,7 @@ public class PlayEffect extends SpellAbilityEffect {
                 game.getAction().revealTo(tgtCard, controller);
             }
             String prompt = sa.hasParam("CastTransformed") ? "lblDoYouWantPlayCardTransformed" : "lblDoYouWantPlayCard";
-            if (singleOption && !controller.getController().confirmAction(sa, null, Localizer.getInstance().getMessage(prompt, CardTranslation.getTranslatedName(tgtCard.getName())), tgtCard, null)) {
+            if (singleOption && !controller.getController().confirmAction(sa, null, Localizer.getInstance().getMessage(prompt, tgtCard.getTranslatedName()), tgtCard, null)) {
                 if (wasFaceDown) {
                     tgtCard.turnFaceDownNoUpdate();
                     tgtCard.updateStateForView();
@@ -276,13 +276,13 @@ public class PlayEffect extends SpellAbilityEffect {
             CardStateName state = CardStateName.Original;
 
             if (sa.hasParam("CastTransformed")) {
-                if (!tgtCard.changeToState(CardStateName.Transformed)) {
+                if (!tgtCard.changeToState(CardStateName.Backside)) {
                     // Failed to transform. In the future, we might need to just remove this option and continue
                     amount--;
                     System.err.println("CastTransformed failed for '" + tgtCard + "'.");
                     continue;
                 }
-                state = CardStateName.Transformed;
+                state = CardStateName.Backside;
             }
 
             List<SpellAbility> sas = AbilityUtils.getSpellsFromPlayEffect(tgtCard, controller, state, !altCost);
@@ -361,7 +361,6 @@ public class PlayEffect extends SpellAbilityEffect {
                 continue;
             }
 
-            boolean unpayableCost = tgtSA.getPayCosts().getCostMana().getMana().isNoCost();
             if (sa.hasParam("WithoutManaCost")) {
                 tgtSA = tgtSA.copyWithNoManaCost();
             } else if (sa.hasParam("PlayCost")) {
@@ -380,7 +379,8 @@ public class PlayEffect extends SpellAbilityEffect {
                 }
 
                 tgtSA = tgtSA.copyWithManaCostReplaced(tgtSA.getActivatingPlayer(), abCost);
-            } else if (unpayableCost) {
+            } else if (tgtSA.getPayCosts().hasManaCost() && tgtSA.getPayCosts().getCostMana().getMana().isNoCost()) {
+                // unpayable
                 continue;
             }
 
@@ -426,6 +426,10 @@ public class PlayEffect extends SpellAbilityEffect {
 
             if (tgtSA.usesTargeting() && !optional) {
                 tgtSA.getTargetRestrictions().setMandatory(true);
+            }
+
+            if (sa.hasParam("Named")) {
+                tgtSA.setName(sa.getName());
             }
 
             // can't be done later
@@ -486,7 +490,7 @@ public class PlayEffect extends SpellAbilityEffect {
     public static void addReplaceGraveyardEffect(Card c, Card hostCard, SpellAbility sa, SpellAbility tgtSA, String zone) {
         final Game game = hostCard.getGame();
         final Player controller = sa.getActivatingPlayer();
-        final String name = hostCard.getName() + "'s Effect";
+        final String name = hostCard.getDisplayName() + "'s Effect";
         final String image = hostCard.getImageKey();
         final Card eff = createEffect(sa, controller, name, image);
 

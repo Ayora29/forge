@@ -11,7 +11,6 @@ import forge.game.event.GameEventCardStatsChanged;
 import forge.game.player.Player;
 import forge.game.spellability.SpellAbility;
 import forge.game.zone.ZoneType;
-import forge.util.CardTranslation;
 import forge.util.IterableUtil;
 import forge.util.Localizer;
 import forge.util.collect.FCollection;
@@ -109,7 +108,7 @@ public class CloneEffect extends SpellAbilityEffect {
         }
 
         final boolean optional = sa.hasParam("Optional");
-        if (optional && !host.getController().getController().confirmAction(sa, null, Localizer.getInstance().getMessage("lblDoYouWantCopy", CardTranslation.getTranslatedName(cardToCopy.getName())), null)) {
+        if (optional && !host.getController().getController().confirmAction(sa, null, Localizer.getInstance().getMessage("lblDoYouWantCopy", cardToCopy.getTranslatedName()), null)) {
             return;
         }
 
@@ -129,6 +128,8 @@ public class CloneEffect extends SpellAbilityEffect {
             cloneTargets.remove(cardToCopy);
         }
 
+        final long ts = game.getNextTimestamp();
+
         for (Card tgtCard : cloneTargets) {
             if (sa.hasParam("CloneZone") &&
                     !tgtCard.isInZone(ZoneType.smartValueOf(sa.getParam("CloneZone")))) {
@@ -141,7 +142,6 @@ public class CloneEffect extends SpellAbilityEffect {
 
             game.getTriggerHandler().clearActiveTriggers(tgtCard, null);
 
-            final long ts = game.getNextTimestamp();
             tgtCard.addCloneState(CardFactory.getCloneStates(cardToCopy, tgtCard, sa), ts);
             tgtCard.updateRooms();
 
@@ -199,7 +199,7 @@ public class CloneEffect extends SpellAbilityEffect {
                 tgtCard.addRemembered(cardToCopy);
             }
             // spire
-            tgtCard.setChosenColorID(cardToCopy.getChosenColorID());
+            tgtCard.setMarkedColors(cardToCopy.getMarkedColors());
 
             game.fireEvent(new GameEventCardStatsChanged(tgtCard));
         }

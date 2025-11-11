@@ -2,7 +2,6 @@ package forge.game.card;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import forge.StaticData;
 import forge.card.CardDb;
 import forge.card.ColorSet;
@@ -64,12 +63,6 @@ public class CardProperty {
             String name = TextUtil.fastReplace(property.substring(5), ";", ","); // workaround for card name with ","
             name = TextUtil.fastReplace(name, "_", " ");
             if (!card.sharesNameWith(name)) {
-                return false;
-            }
-        } else if (property.startsWith("notnamed")) {
-            String name = TextUtil.fastReplace(property.substring(8), ";", ","); // workaround for card name with ","
-            name = TextUtil.fastReplace(name, "_", " ");
-            if (card.sharesNameWith(name)) {
                 return false;
             }
         } else if (property.equals("NamedCard")) {
@@ -504,18 +497,6 @@ public class CardProperty {
                         return false;
                 }
             }
-        } else if (property.startsWith("NotEnchantedBy")) {
-            if (property.substring(14).equals("Targeted")) {
-                for (final Card c : AbilityUtils.getDefinedCards(source, "Targeted", spellAbility)) {
-                    if (card.isEnchantedBy(c)) {
-                        return false;
-                    }
-                }
-            } else {
-                if (card.isEnchantedBy(source)) {
-                    return false;
-                }
-            }
         } else if (property.startsWith("Enchanted")) {
             if (!source.equals(card.getEntityAttachedTo())) {
                 return false;
@@ -540,15 +521,6 @@ public class CardProperty {
                         return false;
                     }
                 }
-            } else if (property.substring(16).equals("AllRemembered")) {
-                for (final Object rem : source.getRemembered()) {
-                    if (rem instanceof Card) {
-                        final Card c = (Card) rem;
-                        if (!card.canBeAttached(c, null)) {
-                            return false;
-                        }
-                    }
-                }
             } else {
                 if (!card.canBeAttached(source, null)) {
                     return false;
@@ -556,12 +528,7 @@ public class CardProperty {
             }
         } else if (property.startsWith("EquippedBy") || property.startsWith("AttachedBy")) {
             String prop = property.substring(10);
-            if (prop.equals("Enchanted")) {
-                if (source.getEnchantingCard() == null ||
-                        !card.hasCardAttachment(source.getEnchantingCard())) {
-                    return false;
-                }
-            } else if (!StringUtils.isBlank(prop)) {
+            if (!StringUtils.isBlank(prop)) {
                 boolean found = false;
                 for (final Card c : AbilityUtils.getDefinedCards(source, prop, spellAbility)) {
                     if (card.hasCardAttachment(c)) {
@@ -752,17 +719,6 @@ public class CardProperty {
                     return false;
                 }
             }
-        } else if (property.equals("Party")) {
-            boolean isParty = false;
-            Set<String> partyTypes = Sets.newHashSet("Cleric", "Rogue", "Warrior", "Wizard");
-            Set<String> cTypes = card.getType().getCreatureTypes();
-            for (String t : partyTypes) {
-                if (cTypes.contains(t)) {
-                    isParty = true;
-                    break;
-                }
-            }
-            return isParty;
         } else if (property.startsWith("sharesCreatureTypeWith")) {
             if (property.equals("sharesCreatureTypeWith")) {
                 if (!card.sharesCreatureTypeWith(source)) {
@@ -1010,7 +966,7 @@ public class CardProperty {
             final String[] res = restrictions.split("_");
             final ZoneType origin = ZoneType.smartValueOf(res[0]);
 
-            if (card.getTurnInZone() != game.getPhaseHandler().getTurn()) {
+            if (!card.enteredThisTurn()) {
                 return false;
             }
 
@@ -1019,7 +975,7 @@ public class CardProperty {
             }
         } else if (property.startsWith("ThisTurnEntered")) {
             // only check if it entered the Zone this turn
-            if (card.getTurnInZone() != game.getPhaseHandler().getTurn()) {
+            if (!card.enteredThisTurn()) {
                 return false;
             }
             if (!property.equals("ThisTurnEntered")) { // to confirm specific zones / player
@@ -1036,21 +992,21 @@ public class CardProperty {
                 }
             }
         } else if (property.equals("DiscardedThisTurn")) {
-            if (card.getTurnInZone() != game.getPhaseHandler().getTurn()) {
+            if (!card.enteredThisTurn()) {
                 return false;
             }
             if (!card.wasDiscarded()) {
                 return false;
             }
         } else if (property.equals("surveilledThisTurn")) {
-            if (card.getTurnInZone() != game.getPhaseHandler().getTurn()) {
+            if (!card.enteredThisTurn()) {
                 return false;
             }
             if (!card.wasSurveilled()) {
                 return false;
             }
         } else if (property.equals("milledThisTurn")) {
-            if (card.getTurnInZone() != game.getPhaseHandler().getTurn()) {
+            if (!card.enteredThisTurn()) {
                 return false;
             }
             if (!card.wasMilled()) {
@@ -1270,7 +1226,8 @@ public class CardProperty {
             if (property.contains("ControlledBy")) {
                 FCollectionView<Player> p = AbilityUtils.getDefinedPlayers(source, property.split("ControlledBy")[1], spellAbility);
                 cards = CardLists.filterControlledBy(cards, p);
-                if (!cards.contains(card)) {
+                // Kraven the Hunter LTB trigger
+                if (!card.isLKI() && !cards.contains(card)) {
                     return false;
                 }
             }
@@ -1374,20 +1331,12 @@ public class CardProperty {
             if (!card.isEnchanted()) {
                 return false;
             }
-        } else if (property.startsWith("unenchanted")) {
-            if (card.isEnchanted()) {
-                return false;
-            }
         } else if (property.startsWith("enchanting")) {
             if (!card.isEnchanting()) {
                 return false;
             }
         } else if (property.startsWith("equipped")) {
             if (!card.isEquipped()) {
-                return false;
-            }
-        } else if (property.startsWith("unequipped")) {
-            if (card.isEquipped()) {
                 return false;
             }
         } else if (property.startsWith("equipping")) {
@@ -1597,8 +1546,6 @@ public class CardProperty {
                     return false;
                 }
             }
-        } else if (property.startsWith("notattacking")) {
-            return null == combat || !combat.isAttacking(card);
         } else if (property.startsWith("enlistedThisCombat")) {
             if (card.getEnlistedThisCombat() == false) return false;
         } else if (property.startsWith("attackedThisCombat")) {
@@ -1652,8 +1599,6 @@ public class CardProperty {
             if (Collections.disjoint(combat.getAttackersBlockedBy(source), combat.getAttackersBlockedBy(card))) {
                 return false;
             }
-        } else if (property.startsWith("notblocking")) {
-            return null == combat || !combat.isBlocking(card);
         }
         // Nex predicates refer to past combat and don't need a reference to actual combat
         else if (property.equals("blocked")) {
@@ -1849,10 +1794,24 @@ public class CardProperty {
             if (!card.isForetold()) {
                 return false;
             }
+        } else if (property.equals("warped")) {
+            if (!card.isWarped()) {
+                return false;
+            }
+        } else if (property.equals("webSlinged")) {
+            if (!card.isWebSlinged()) {
+                return false;
+            }
         } else if (property.equals("CrewedThisTurn")) {
             if (!hasTimestampMatch(card, source.getCrewedByThisTurn())) return false;
+        } else if (property.equals("CrewedBySourceThisTurn")) {
+            if (!hasTimestampMatch(source, card.getCrewedByThisTurn())) return false;
         } else if (property.equals("HasDevoured")) {
             if (card.getDevouredCards().isEmpty()) {
+                return false;
+            }
+        } else if (property.equals("harnessed")) {
+            if (!card.isHarnessed()) {
                 return false;
             }
         } else if (property.equals("IsMonstrous")) {
@@ -2092,16 +2051,6 @@ public class CardProperty {
             } else {
                 return false;
             }
-        } else if (property.startsWith("NotTriggered")) {
-            final String key = property.substring("NotTriggered".length());
-            if (spellAbility instanceof SpellAbility) {
-                SpellAbility sa = (SpellAbility) spellAbility;
-                if (card.equals(sa.getRootAbility().getTriggeringObject(AbilityKey.fromString(key)))) {
-                    return false;
-                }
-            } else {
-                return false;
-            }
         } else if (property.startsWith("NotDefined")) {
             final String key = property.substring("NotDefined".length());
             if (AbilityUtils.getDefinedCards(source, key, spellAbility).contains(card)) {
@@ -2164,11 +2113,8 @@ public class CardProperty {
                 }
             }
             return new CheckCanPayManaCost().check();
-        } else {
-            // StringType done in CardState
-            if (!card.getCurrentState().hasProperty(property, sourceController, source, spellAbility)) {
-                return false;
-            }
+        } else if (!card.getCurrentState().hasProperty(property, sourceController, source, spellAbility)) {
+            return false;
         }
         return true;
     }

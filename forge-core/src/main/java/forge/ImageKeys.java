@@ -23,10 +23,16 @@ public final class ImageKeys {
 
     public static final String HIDDEN_CARD           = "hidden";
     public static final String MORPH_IMAGE           = "morph";
-    public static final String DISGUISED_IMAGE       = "disguised";
     public static final String MANIFEST_IMAGE        = "manifest";
     public static final String CLOAKED_IMAGE         = "cloaked";
     public static final String FORETELL_IMAGE        = "foretell";
+    public static final String BLESSING_IMAGE        = "blessing";
+    public static final String INITIATIVE_IMAGE      = "initiative";
+    public static final String MONARCH_IMAGE         = "monarch";
+    public static final String THE_RING_IMAGE        = "the_ring";
+    public static final String RADIATION_IMAGE       = "radiation";
+    public static final String SPEED_IMAGE           = "speed";
+    public static final String MAX_SPEED_IMAGE       = "max_speed";
 
     public static final String BACKFACE_POSTFIX  = "$alt";
     public static final String SPECFACE_W = "$wspec";
@@ -201,32 +207,35 @@ public final class ImageKeys {
             Set<String> setAlias = new HashSet<>();
             Set<String> setFolderContent = new HashSet<>();
             CardEdition ed = StaticData.instance().getEditions().get(code);
-            String alias = ed.getAlias();
-            String code2 = ed.getCode2();
-            String[] files = new File(CACHE_CARD_PICS_DIR + code).list();
-            if(files==null || files.length == 0) files = new File(CACHE_CARD_PICS_DIR + alias).list();
-            if(files==null || files.length == 0) files = new File(CACHE_CARD_PICS_DIR + code2).list();
-            if(files!=null){
-                for (String filename : files) {
-                    if (!filename.endsWith(".full.jpg")) continue;
-                    setFolderContent.add(filename.replace(".full.jpg",""));
+
+            if(null != ed){
+                String alias = ed.getAlias();
+                String code2 = ed.getCode2();
+                String[] files = new File(CACHE_CARD_PICS_DIR + code).list();
+                if(files==null || files.length == 0) files = new File(CACHE_CARD_PICS_DIR + alias).list();
+                if(files==null || files.length == 0) files = new File(CACHE_CARD_PICS_DIR + code2).list();
+                if(files!=null){
+                    for (String filename : files) {
+                        if (!filename.endsWith(".full.jpg")) continue;
+                        setFolderContent.add(filename.replace(".full.jpg",""));
+                    }
                 }
+                cachedContent.put(code, setFolderContent);
+
+                if (null != alias && alias.length() > 2 && !code.equalsIgnoreCase(alias)) setAlias.add(alias);
+                if (null != code2 && code2.length() > 2 && !code.equalsIgnoreCase(code2)) setAlias.add(code2);
+                if (!setAlias.isEmpty()) editionAlias.put(code, setAlias);
+
+                LocalDate release = ed.getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+                if(release.isAfter(D2015)) editionDefaultDir.put(code,Arrays.asList(DEFAULT_2015,DEFAULT_2003,DEFAULT_1997,DEFAULT_1993));
+                else if(release.isAfter(D2003)) editionDefaultDir.put(code,Arrays.asList(DEFAULT_2003,DEFAULT_2015,DEFAULT_1997,DEFAULT_1993));
+                else if(release.isAfter(D1997)) editionDefaultDir.put(code,Arrays.asList(DEFAULT_1997,DEFAULT_2003,DEFAULT_1993,DEFAULT_2015));
+                else editionDefaultDir.put(code,Arrays.asList(DEFAULT_1993,DEFAULT_1997,DEFAULT_2003,DEFAULT_2015));
             }
-            cachedContent.put(code, setFolderContent);
-
-            if (null != alias && alias.length() > 2 && !code.equalsIgnoreCase(alias)) setAlias.add(alias);
-            if (null != code2 && code2.length() > 2 && !code.equalsIgnoreCase(code2)) setAlias.add(code2);
-            if (!setAlias.isEmpty()) editionAlias.put(code, setAlias);
-
-            LocalDate release = ed.getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-            if(release.isAfter(D2015)) editionDefaultDir.put(code,Arrays.asList(DEFAULT_2015,DEFAULT_2003,DEFAULT_1997,DEFAULT_1993));
-            else if(release.isAfter(D2003)) editionDefaultDir.put(code,Arrays.asList(DEFAULT_2003,DEFAULT_2015,DEFAULT_1997,DEFAULT_1993));
-            else if(release.isAfter(D1997)) editionDefaultDir.put(code,Arrays.asList(DEFAULT_1997,DEFAULT_2003,DEFAULT_1993,DEFAULT_2015));
-            else editionDefaultDir.put(code,Arrays.asList(DEFAULT_1993,DEFAULT_1997,DEFAULT_2003,DEFAULT_2015));
         }
 
         String[] keyParts = StringUtils.split(pc.getCardImageKey(), "//");
-        if (keyParts.length != 2) return false;
+        if (keyParts.length != 2 ||  "???".equals(keyParts[0])) return false;
 
         Set<String> content = cachedContent.get(keyParts[0]);
         return content.contains(keyParts[1].split("\\.")[0]);

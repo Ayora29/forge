@@ -19,15 +19,25 @@ import forge.game.ability.SpellAbilityEffect;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
 import forge.game.card.CardLists;
+import forge.game.keyword.Keyword;
 import forge.game.player.Player;
 import forge.game.spellability.AbilityManaPart;
 import forge.game.spellability.SpellAbility;
+import forge.game.trigger.TriggerType;
 import forge.game.zone.ZoneType;
 import forge.util.Localizer;
 import io.sentry.Breadcrumb;
 import io.sentry.Sentry;
 
 public class ManaEffect extends SpellAbilityEffect {
+
+    @Override
+    public void buildSpellAbility(SpellAbility sa) {
+        sa.setManaPart(new AbilityManaPart(sa, sa.getMapParams()));
+        if (sa.getParent() == null) {
+            sa.setUndoable(true); // will try at least
+        }
+    }
 
     @Override
     public void resolve(SpellAbility sa) {
@@ -60,18 +70,21 @@ public class ManaEffect extends SpellAbilityEffect {
 
             if (abMana.isComboMana()) {
                 int amount = sa.hasParam("Amount") ? AbilityUtils.calculateAmount(card, sa.getParam("Amount"), sa) : 1;
-                if(amount <= 0)
+                if (amount <= 0)
                     continue;
 
-                String express = abMana.getExpressChoice();
-                String[] colorsProduced = abMana.getComboColors(sa).split(" ");
-
-                final StringBuilder choiceString = new StringBuilder();
-                final StringBuilder choiceSymbols = new StringBuilder();
+                String combo = abMana.getComboColors(sa);
+                if (combo.isBlank()) {
+                    return;
+                }
+                String[] colorsProduced = combo.split(" ");
                 ColorSet colorOptions = ColorSet.fromNames(colorsProduced);
+                String express = abMana.getExpressChoice();
                 String[] colorsNeeded = express.isEmpty() ? null : express.split(" ");
                 boolean differentChoice = abMana.getOrigProduced().contains("Different");
                 ColorSet fullOptions = colorOptions;
+                final StringBuilder choiceString = new StringBuilder();
+                final StringBuilder choiceSymbols = new StringBuilder();
                 // Use specifyManaCombo if possible
                 if (colorsNeeded == null && amount > 1 && !sa.hasParam("TwoEach")) {
                     Map<Byte, Integer> choices = chooser.getController().specifyManaCombo(sa, colorOptions, amount, differentChoice);
@@ -143,7 +156,7 @@ public class ManaEffect extends SpellAbilityEffect {
                 for (int nChar = 0; nChar < colorsNeeded.length(); nChar++) {
                     mask |= MagicColor.fromName(colorsNeeded.charAt(nChar));
                 }
-                colorMenu = mask == 0 ? ColorSet.ALL_COLORS : ColorSet.fromMask(mask);
+                colorMenu = mask == 0 ? ColorSet.WUBRG : ColorSet.fromMask(mask);
                 byte val = chooser.getController().chooseColor(Localizer.getInstance().getMessage("lblSelectManaProduce"), sa, colorMenu);
                 if (0 == val) {
                     throw new RuntimeException("ManaEffect::resolve() /*any mana*/ - " + p + " color mana choice is empty for " + card.getName());
@@ -258,10 +271,14 @@ public class ManaEffect extends SpellAbilityEffect {
             producedMana.append(abMana.produceMana(mana, p, sa));
         }
 
-        abMana.tapsForMana(sa.getRootAbility(), producedMana.toString());
-
         // Only clear express choice after mana has been produced
         abMana.clearExpressChoice();
+
+        abMana.tapsForMana(sa.getRootAbility(), producedMana.toString());
+
+        if (sa.isKeyword(Keyword.FIREBENDING)) {
+            activator.triggerElementalBend(TriggerType.Firebend);
+        }
     }
 
     /**

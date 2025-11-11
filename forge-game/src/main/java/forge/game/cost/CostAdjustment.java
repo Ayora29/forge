@@ -21,6 +21,7 @@ import forge.game.spellability.SpellAbility;
 import forge.game.spellability.SpellAbilityPredicates;
 import forge.game.spellability.TargetChoices;
 import forge.game.staticability.StaticAbility;
+import forge.game.staticability.StaticAbilityMode;
 import forge.game.trigger.TriggerType;
 import forge.game.zone.Zone;
 import forge.game.zone.ZoneType;
@@ -71,7 +72,7 @@ public class CostAdjustment {
         // Sort abilities to apply them in proper order
         for (Card c : cardsOnBattlefield) {
             for (final StaticAbility stAb : c.getStaticAbilities()) {
-                if (stAb.checkMode("RaiseCost")) {
+                if (stAb.checkMode(StaticAbilityMode.RaiseCost)) {
                     raiseAbilities.add(stAb);
                 }
             }
@@ -128,24 +129,20 @@ public class CostAdjustment {
         } else if (st.hasParam("Amount")) {
             String amount = st.getParam("Amount");
             if ("Escalate".equals(amount)) {
-                SpellAbility sub = sa;
-                while (sub != null) {
-                    if (sub.getDirectSVars().containsKey("CharmOrder")) {
-                        count++;
-                    }
-                    sub = sub.getSubAbility();
+                SpellAbility tail = sa.getTailAbility();
+                if (tail.hasSVar("CharmOrder")) {
+                    count = tail.getSVarInt("CharmOrder") - 1;
                 }
-                --count;
             } else if ("Strive".equals(amount)) {
                 for (TargetChoices tc : sa.getAllTargetChoices()) {
                     count += tc.size();
                 }
                 --count;
-            } else if ("Spree".equals(amount)) {
+            } else if ("Spree".equals(amount) || "Tiered".equals(amount)) {
                 SpellAbility sub = sa;
                 while (sub != null) {
-                    if (sub.hasParam("SpreeCost")) {
-                        Cost part = new Cost(sub.getParam("SpreeCost"), sa.isAbility(), sa.getHostCard().equals(hostCard));
+                    if (sub.hasParam("ModeCost")) {
+                        Cost part = new Cost(sub.getParam("ModeCost"), sa.isAbility(), sa.getHostCard().equals(hostCard));
                         cost.mergeTo(part, count, sa);
                     }
                     sub = sub.getSubAbility();
@@ -203,10 +200,10 @@ public class CostAdjustment {
         // Sort abilities to apply them in proper order
         for (Card c : cardsOnBattlefield) {
             for (final StaticAbility stAb : c.getStaticAbilities()) {
-                if (stAb.checkMode("ReduceCost") && checkRequirement(sa, stAb)) {
+                if (stAb.checkMode(StaticAbilityMode.ReduceCost) && checkRequirement(sa, stAb)) {
                     reduceAbilities.add(stAb);
                 }
-                else if (stAb.checkMode("SetCost")) {
+                else if (stAb.checkMode(StaticAbilityMode.SetCost)) {
                     setAbilities.add(stAb);
                 }
             }
@@ -274,6 +271,7 @@ public class CostAdjustment {
                         host.addExiledCard(d);
                         d.setExiledWith(host);
                         d.setExiledBy(host.getController());
+                        d.setExiledSA(sa);
                         table.put(ZoneType.Graveyard, d.getZone().getZoneType(), d);
                     }
                 }
@@ -362,7 +360,7 @@ public class CostAdjustment {
         String offeringType = "";
         for (KeywordInterface inst : sa.getHostCard().getKeywords(Keyword.OFFERING)) {
             final String kw = inst.getOriginal();
-            offeringType = kw.split(" ")[0];
+            offeringType = kw.split(":")[1];
             break;
         }
 

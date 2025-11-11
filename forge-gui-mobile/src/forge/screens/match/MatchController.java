@@ -68,7 +68,6 @@ import forge.toolbox.FDisplayObject;
 import forge.toolbox.FOptionPane;
 import forge.trackable.TrackableCollection;
 import forge.util.ITriggerEvent;
-import forge.util.Localizer;
 import forge.util.MessageUtil;
 import forge.util.WaitCallback;
 import forge.util.collect.FCollectionView;
@@ -174,10 +173,13 @@ public class MatchController extends AbstractGuiGame {
             final VPlayerPanel playerPanel = new VPlayerPanel(p, isLocal || noHumans, players.size());
             if (isLocal && !init) {
                 playerPanels.add(0, playerPanel); //ensure local player always first among player panels
+                playerPanel.setBottomPlayer(true);
                 init = true;
             }
             else {
                 playerPanels.add(playerPanel);
+                if (playerPanel.equals(playerPanels.get(0)))
+                    playerPanel.setBottomPlayer(true);
             }
         }
         view = new MatchScreen(playerPanels);
@@ -660,7 +662,7 @@ public class MatchController extends AbstractGuiGame {
     }
 
     @Override
-    public <T> List<T> getChoices(final String message, final int min, final int max, final List<T> choices, final T selected, final Function<T, String> display) {
+    public <T> List<T> getChoices(final String message, final int min, final int max, final List<T> choices, final List<T> selected, final Function<T, String> display) {
         return GuiBase.getInterface().getChoices(message, min, max, choices, selected, display);
     }
 
@@ -748,10 +750,7 @@ public class MatchController extends AbstractGuiGame {
         FPopupMenu menu = new FPopupMenu() {
             @Override
             protected void buildMenu() {
-                addItem(new FMenuItem(Forge.getLocalizer().getMessage("lblFullControl"),
-                        e -> {
-                            FOptionPane.showMessageDialog(Localizer.getInstance().getMessage("lblFullControlDetails"), "Full Control details");
-                        }));
+                addItem(new FMenuItem("- " + Forge.getLocalizer().getMessage("lblFullControl") + " -", null, false));
                 addItem(getFullControlMenuEntry("lblChooseCostOrder", FullControlFlag.ChooseCostOrder, controlFlags));
                 addItem(getFullControlMenuEntry("lblChooseCostReductionOrder", FullControlFlag.ChooseCostReductionOrderAndVariableAmount, controlFlags));
                 addItem(getFullControlMenuEntry("lblNoPaymentFromManaAbility", FullControlFlag.NoPaymentFromManaAbility, controlFlags));

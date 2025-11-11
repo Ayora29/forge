@@ -46,6 +46,9 @@ public class AlterAttributeEffect extends SpellAbilityEffect {
                 boolean altered = false;
 
                 switch (attr.trim()) {
+                    case "Harnessed":
+                        altered = gameCard.setHarnessed(activate);
+                        break;
                     case "Plotted":
                         altered = gameCard.setPlotted(activate);
 
@@ -88,10 +91,10 @@ public class AlterAttributeEffect extends SpellAbilityEffect {
                             }
                             p.addCommander(gameCard);
                             //Seems important enough to mention in the game log.
-                            gameCard.getGame().getGameLog().add(GameLogEntryType.STACK_RESOLVE, String.format("%s is now %s's commander.", gameCard.getPaperCard().getName(), p));
+                            gameCard.getGame().getGameLog().add(GameLogEntryType.STACK_RESOLVE, String.format("%s is now %s's commander.", gameCard.getPaperCard().getDisplayName(), p));
                         } else {
                             p.removeCommander(gameCard);
-                            gameCard.getGame().getGameLog().add(GameLogEntryType.STACK_RESOLVE, String.format("%s is no longer %s's commander.", gameCard.getPaperCard().getName(), p));
+                            gameCard.getGame().getGameLog().add(GameLogEntryType.STACK_RESOLVE, String.format("%s is no longer %s's commander.", gameCard.getPaperCard().getDisplayName(), p));
                         }
                         altered = true;
                         break;

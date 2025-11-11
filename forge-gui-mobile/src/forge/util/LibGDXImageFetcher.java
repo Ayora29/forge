@@ -30,14 +30,15 @@ public class LibGDXImageFetcher extends ImageFetcher {
         }
 
         private boolean doFetch(String urlToDownload) throws IOException {
-            if (disableHostedDownload && urlToDownload.startsWith(ForgeConstants.URL_CARDFORGE) && !urlToDownload.contains("tokens")) {
+            if (disableHostedDownload && urlToDownload.startsWith(ForgeConstants.URL_CARDFORGE)) {
                 // Don't try to download card images from cardforge servers
                 return false;
             }
 
             String newdespath = urlToDownload.contains(".fullborder.") || urlToDownload.startsWith(ForgeConstants.URL_PIC_SCRYFALL_DOWNLOAD) ?
                     TextUtil.fastReplace(destPath, ".full.", ".fullborder.") : destPath;
-            if (!newdespath.contains(".full") && urlToDownload.startsWith(ForgeConstants.URL_PIC_SCRYFALL_DOWNLOAD))
+            if (!newdespath.contains(".full") && urlToDownload.startsWith(ForgeConstants.URL_PIC_SCRYFALL_DOWNLOAD) &&
+                    !destPath.startsWith(ForgeConstants.CACHE_TOKEN_PICS_DIR) && !destPath.startsWith(ForgeConstants.CACHE_PLANECHASE_PICS_DIR))
                 newdespath = newdespath.replace(".jpg", ".fullborder.jpg"); //fix planes/phenomenon for round border options
             URL url = new URL(urlToDownload);
             System.out.println("Attempting to fetch: " + url);
@@ -83,21 +84,19 @@ public class LibGDXImageFetcher extends ImageFetcher {
         public void run() {
             boolean success = false;
             for (String urlToDownload : downloadUrls) {
-                boolean isPlanechaseBG = urlToDownload.startsWith("https://downloads.cardforge.org/images/planes/");
+                boolean isPlanechaseBG = urlToDownload.startsWith("PLANECHASEBG:");
                 try {
-                    if (isPlanechaseBG) {
-                        success = doFetch(urlToDownload);
-                    } else {
-                        success = doFetch(tofullBorder(urlToDownload));
-                    }
+
+                    success = doFetch(urlToDownload.replace("PLANECHASEBG:", ""));
+
                     if (success) {
                         break;
                     }
                 } catch (IOException e) {
                     if (isPlanechaseBG) {
-                        System.out.println("Failed to download planechase background [" + destPath + "] image: " + e.getMessage());
+                        System.err.println("Failed to download planechase background [" + destPath + "] image: " + e.getMessage());
                     } else {
-                        System.out.println("Failed to download card [" + destPath + "] image: " + e.getMessage());
+                        System.err.println("Failed to download card [" + destPath + "] image: " + e.getMessage());
                         if (urlToDownload.contains("tokens")) {
                             int setIndex = urlToDownload.lastIndexOf('_');
                             int typeIndex = urlToDownload.lastIndexOf('.');
@@ -105,7 +104,7 @@ public class LibGDXImageFetcher extends ImageFetcher {
                             String extension = urlToDownload.substring(typeIndex);
                             urlToDownload = setlessFilename + extension;
                             try {
-                                success = doFetch(tofullBorder(urlToDownload));
+                                success = doFetch(urlToDownload);
                                 if (success) {
                                     break;
                                 }

@@ -26,6 +26,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -315,6 +316,12 @@ public final class CardType implements Comparable<CardType>, CardTypeView {
         return landTypes;
     }
 
+    public Set<String> getBattleTypes() {
+        if(!isBattle())
+            return Set.of();
+        return subtypes.stream().filter(CardType::isABattleType).collect(Collectors.toSet());
+    }
+
     @Override
     public boolean hasStringType(String t) {
         if (t.isEmpty()) {
@@ -509,7 +516,7 @@ public final class CardType implements Comparable<CardType>, CardTypeView {
     @Override
     public boolean isAttachment() { return isAura() || isEquipment() || isFortification(); }
     @Override
-    public boolean isAura()           { return hasSubtype("Aura"); }
+    public boolean isAura() { return hasSubtype("Aura"); }
     @Override
     public boolean isEquipment()  { return hasSubtype("Equipment"); }
     @Override
@@ -521,6 +528,9 @@ public final class CardType implements Comparable<CardType>, CardTypeView {
     public boolean isContraption() {
         return hasSubtype("Contraption");
     }
+
+    public boolean isVehicle() { return hasSubtype("Vehicle"); }
+    public boolean isSpacecraft() { return hasSubtype("Spacecraft"); }
 
     @Override
     public boolean isSaga() {
@@ -537,7 +547,14 @@ public final class CardType implements Comparable<CardType>, CardTypeView {
         if (!isCreature() && !isKindred()) {
             return false;
         }
-        return !Collections.disjoint(getCreatureTypes(), Constant.OUTLAW_TYPES);
+        return Constant.OUTLAW_TYPES.stream().anyMatch(s -> hasCreatureType(s));
+    }
+    @Override
+    public boolean isParty() {
+        if (!isCreature() && !isKindred()) {
+            return false;
+        }
+        return Constant.PARTY_TYPES.stream().anyMatch(s -> hasCreatureType(s));
     }
 
     @Override
@@ -649,33 +666,36 @@ public final class CardType implements Comparable<CardType>, CardTypeView {
         if (subtypes.isEmpty()) {
             return;
         }
-        if (!isCreature() && !isKindred()) {
-            subtypes.removeIf(Predicates.IS_CREATURE_TYPE);
+        Predicate<String> allowedTypes = x -> false;
+        if (isCreature() || isKindred()) {
+            allowedTypes = allowedTypes.or(Predicates.IS_CREATURE_TYPE);
         }
-        if (!isLand()) {
-            subtypes.removeIf(Predicates.IS_LAND_TYPE);
+        if (isLand()) {
+            allowedTypes = allowedTypes.or(Predicates.IS_LAND_TYPE);
         }
-        if (!isArtifact()) {
-            subtypes.removeIf(Predicates.IS_ARTIFACT_TYPE);
+        if (isArtifact()) {
+            allowedTypes = allowedTypes.or(Predicates.IS_ARTIFACT_TYPE);
         }
-        if (!isEnchantment()) {
-            subtypes.removeIf(Predicates.IS_ENCHANTMENT_TYPE);
+        if (isEnchantment()) {
+            allowedTypes = allowedTypes.or(Predicates.IS_ENCHANTMENT_TYPE);
         }
-        if (!isInstant() && !isSorcery()) {
-            subtypes.removeIf(Predicates.IS_SPELL_TYPE);
+        if (isInstant() || isSorcery()) {
+            allowedTypes = allowedTypes.or(Predicates.IS_SPELL_TYPE);
         }
-        if (!isPlaneswalker()) {
-            subtypes.removeIf(Predicates.IS_WALKER_TYPE);
+        if (isPlaneswalker()) {
+            allowedTypes = allowedTypes.or(Predicates.IS_WALKER_TYPE);
         }
-        if (!isDungeon()) {
-            subtypes.removeIf(Predicates.IS_DUNGEON_TYPE);
+        if (isDungeon()) {
+            allowedTypes = allowedTypes.or(Predicates.IS_DUNGEON_TYPE);
         }
-        if (!isBattle()) {
-            subtypes.removeIf(Predicates.IS_BATTLE_TYPE);
+        if (isBattle()) {
+            allowedTypes = allowedTypes.or(Predicates.IS_BATTLE_TYPE);
         }
-        if (!isPlane()) {
-            subtypes.removeIf(Predicates.IS_PLANAR_TYPE);
+        if (isPlane()) {
+            allowedTypes = allowedTypes.or(Predicates.IS_PLANAR_TYPE);
         }
+
+        subtypes.removeIf(allowedTypes.negate());
     }
 
     @Override
@@ -903,6 +923,12 @@ public final class CardType implements Comparable<CardType>, CardTypeView {
                 "Pirate",
                 "Rogue",
                 "Warlock");
+
+        public static final Set<String> PARTY_TYPES = Sets.newHashSet(
+                "Cleric",
+                "Rogue",
+                "Warrior",
+                "Wizard");
     }
     public static class Predicates {
         public static Predicate<String> IS_LAND_TYPE = CardType::isALandType;
@@ -1053,4 +1079,74 @@ public final class CardType implements Comparable<CardType>, CardTypeView {
         return type;
     }
 
+    public static class Helper {
+        public static final void parseTypes(String sectionName, List<String> content) {
+            Set<String> addToSection = null;
+
+            switch (sectionName) {
+                case "BasicTypes":
+                    addToSection = CardType.Constant.BASIC_TYPES;
+                    break;
+                case "LandTypes":
+                    addToSection = CardType.Constant.LAND_TYPES;
+                    break;
+                case "CreatureTypes":
+                    addToSection = CardType.Constant.CREATURE_TYPES;
+                    break;
+                case "SpellTypes":
+                    addToSection = CardType.Constant.SPELL_TYPES;
+                    break;
+                case "EnchantmentTypes":
+                    addToSection = CardType.Constant.ENCHANTMENT_TYPES;
+                    break;
+                case "ArtifactTypes":
+                    addToSection = CardType.Constant.ARTIFACT_TYPES;
+                    break;
+                case "WalkerTypes":
+                    addToSection = CardType.Constant.WALKER_TYPES;
+                    break;
+                case "DungeonTypes":
+                    addToSection = CardType.Constant.DUNGEON_TYPES;
+                    break;
+                case "BattleTypes":
+                    addToSection = CardType.Constant.BATTLE_TYPES;
+                    break;
+                case "PlanarTypes":
+                    addToSection = CardType.Constant.PLANAR_TYPES;
+                    break;
+            }
+
+            if (addToSection == null) {
+                return;
+            }
+
+            for(String line : content) {
+                if (line.length() == 0) continue;
+
+                if (line.contains(":")) {
+                    String[] k = line.split(":");
+
+                    if (addToSection.contains(k[0])) {
+                        continue;
+                    }
+
+                    addToSection.add(k[0]);
+                    CardType.Constant.pluralTypes.put(k[0], k[1]);
+
+                    if (k[0].contains(" ")) {
+                        CardType.Constant.MultiwordTypes.add(k[0]);
+                    }
+                } else {
+                    if (addToSection.contains(line)) {
+                        continue;
+                    }
+
+                    addToSection.add(line);
+                    if (line.contains(" ")) {
+                        CardType.Constant.MultiwordTypes.add(line);
+                    }
+                }
+            }
+        }
+    }
 }

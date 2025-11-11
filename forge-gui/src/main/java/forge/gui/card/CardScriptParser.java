@@ -449,8 +449,7 @@ public final class CardScriptParser {
             "AttachedBy", "Attached", "NameNotEnchantingEnchantedPlayer",
             "Enchanted", "CanEnchantRemembered",
             "CanEnchantSource", "CanBeEnchantedBy", "CanBeEnchantedByTargeted",
-            "CanBeEnchantedByAllRemembered", "EquippedBy",
-            "EquippedByTargeted", "EquippedByEnchanted", "FortifiedBy",
+            "EquippedBy", "EquippedByTargeted", "EquippedByEnchanted", "FortifiedBy",
             "CanBeEquippedBy", "Equipped", "Fortified", "HauntedBy",
             "notTributed", "madness", "Paired", "PairedWith",
             "Above", "DirectlyAbove", "TopGraveyardCreature",
@@ -469,27 +468,26 @@ public final class CardScriptParser {
             "gotBlockedThisTurn", "greatestPower", "yardGreatestPower",
             "leastPower", "leastToughness", "greatestCMC",
             "greatestRememberedCMC", "lowestRememberedCMC", "lowestCMC",
-            "enchanted", "unenchanted", "enchanting", "equipped", "unequipped",
-            "equipping", "modified", "token", "nonToken", "hasXCost", "suspended",
-            "delved", "attacking", "attackingYou", "notattacking",
+            "enchanted", "enchanting", "equipped",
+            "equipping", "modified", "token", "hasXCost", "suspended",
+            "delved", "attacking", "attackingYou",
             "attackedBySourceThisCombat", "blocking", "blockingSource",
             "blockingCreatureYouCtrl", "blockingRemembered",
-            "sharesBlockingAssignmentWith", "notblocking", "blocked",
+            "sharesBlockingAssignmentWith", "blocked",
             "blockedBySource", "blockedThisTurn", "blockedByThisTurn",
             "blockedBySourceThisTurn", "isBlockedByRemembered", "blockedRemembered",
             "blockedByRemembered", "unblocked", "attackersBandedWith",
             "kicked", "kicked1", "kicked2", "evoked",
             "HasDevoured", "IsMonstrous",
             "CostsPhyrexianMana", "IsRemembered", "IsNotRemembered",
-            "IsImprinted", "IsNotImprinted", "hasActivatedAbilityWithTapCost",
-            "hasActivatedAbility", "hasManaAbility",
+            "IsImprinted", "IsNotImprinted", "hasManaAbility",
             "hasNonManaActivatedAbility", "NoAbilities", "HasCounters",
             "wasNotCast", "ChosenType", "IsNotChosenType", "IsCommander",
             "IsRenowned");
     private static final Set<String> VALID_EXCLUSIVE_STARTSWITH = ImmutableSortedSet
-            .of("named", "notnamed", "OwnedBy", "ControlledBy",
+            .of("named", "OwnedBy", "ControlledBy",
                     "ControllerControls", "AttachedTo", "EnchantedBy",
-                    "NotEnchantedBy", "TopGraveyard", "SharesColorWith",
+                    "TopGraveyard", "SharesColorWith",
                     "MostProminentColor", "notSharesColorWith",
                     "sharesCreatureTypeWith", "sharesCardTypeWith", "sharesLandTypeWith",
                     "sharesNameWith", "doesNotShareNameWith",
@@ -498,7 +496,7 @@ public final class CardScriptParser {
                     "greatestPowerControlledBy", "greatestCMCControlledBy",
                     "power", "toughness", "cmc", "totalPT", "counters", "non",
                     "RememberMap", "wasCastFrom", "set",
-                    "inZone", "HasSVar");
+                    "inZone", "HasSVar", "hasAbility");
 
     private static boolean isValidExclusive(String valid) {
         if (valid.charAt(0) == '!') {

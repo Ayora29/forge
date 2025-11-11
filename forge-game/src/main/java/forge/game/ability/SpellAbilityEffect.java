@@ -6,8 +6,8 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
 import forge.GameCommand;
 import forge.card.CardRarity;
+import forge.card.ColorSet;
 import forge.card.GamePieceType;
-import forge.card.MagicColor;
 import forge.game.Game;
 import forge.game.GameEntity;
 import forge.game.GameObject;
@@ -49,6 +49,8 @@ public abstract class SpellAbilityEffect {
         return sa.getDescription();
     }
 
+    public void buildSpellAbility(final SpellAbility sa) {}
+
     /**
      * Returns this effect description with needed prelude and epilogue.
      * @param params
@@ -83,8 +85,8 @@ public abstract class SpellAbilityEffect {
             if ("SpellDescription".equalsIgnoreCase(stackDesc)) {
                 if (params.containsKey("SpellDescription")) {
                     String rawSDesc = params.get("SpellDescription");
-                    if (rawSDesc.contains(",,,,,,")) rawSDesc = rawSDesc.replaceAll(",,,,,,", " ");
-                    if (rawSDesc.contains(",,,")) rawSDesc = rawSDesc.replaceAll(",,,", " ");
+                    if (rawSDesc.contains(",,,,,,")) rawSDesc = rawSDesc.replace(",,,,,,", " ");
+                    if (rawSDesc.contains(",,,")) rawSDesc = rawSDesc.replace(",,,", " ");
                     String spellDesc = CardTranslation.translateSingleDescriptionText(rawSDesc, sa.getHostCard());
 
                     //trim reminder text from StackDesc
@@ -145,7 +147,7 @@ public abstract class SpellAbilityEffect {
             sb.append(TextUtil.enclosedParen(TextUtil.concatNoSpace("X","=",String.valueOf(amount))));
         }
 
-        String currentName = CardTranslation.getTranslatedName(sa.getHostCard().getName());
+        String currentName = sa.getHostCard().getTranslatedName();
         String substitutedDesc = TextUtil.fastReplace(sb.toString(), "CARDNAME", currentName);
         substitutedDesc = TextUtil.fastReplace(substitutedDesc, "NICKNAME", Lang.getInstance().getNickName(currentName));
         return substitutedDesc;
@@ -356,6 +358,7 @@ public abstract class SpellAbilityEffect {
         boolean intrinsic = sa.isIntrinsic();
         boolean your = location.startsWith("Your");
         boolean combat = location.endsWith("Combat");
+        boolean upkeep = location.endsWith("Upkeep");
 
         String desc = sa.getParamOrDefault("AtEOTDesc", "");
 
@@ -365,11 +368,16 @@ public abstract class SpellAbilityEffect {
         if (combat) {
             location = location.substring(0, location.length() - "Combat".length());
         }
+        if (upkeep) {
+            location = location.substring(0, location.length() - "Upkeep".length());
+        }
 
         if (desc.isEmpty()) {
             StringBuilder sb = new StringBuilder();
             if (location.equals("Hand")) {
                 sb.append("Return ");
+            } else if (location.equals("Library")) {
+                sb.append("Shuffle ");
             } else if (location.equals("SacrificeCtrl")) {
                 sb.append("Its controller sacrifices ");
             } else {
@@ -378,6 +386,8 @@ public abstract class SpellAbilityEffect {
             sb.append(Lang.joinHomogenous(crds));
             if (location.equals("Hand")) {
                 sb.append(" to your hand");
+            } else if (location.equals("Library")) {
+                sb.append(" into your library");
             }
             sb.append(" at the ");
             if (combat) {
@@ -385,14 +395,18 @@ public abstract class SpellAbilityEffect {
             } else {
                 sb.append("beginning of ");
                 sb.append(your ? "your" : "the");
-                sb.append(" next end step.");
+                if (upkeep) {
+                    sb.append(" next upkeep.");
+                } else {
+                    sb.append(" next end step.");
+                }
             }
             desc = sb.toString();
         }
 
         StringBuilder delTrig = new StringBuilder();
         delTrig.append("Mode$ Phase | Phase$ ");
-        delTrig.append(combat ? "EndCombat "  : "End Of Turn ");
+        delTrig.append(combat ? "EndCombat " : upkeep ? "Upkeep" : "End Of Turn ");
 
         if (your) {
             delTrig.append("| ValidPlayer$ You ");
@@ -410,6 +424,8 @@ public abstract class SpellAbilityEffect {
         String trigSA = "";
         if (location.equals("Hand")) {
             trigSA = "DB$ ChangeZone | Defined$ DelayTriggerRememberedLKI | Origin$ Battlefield | Destination$ Hand";
+        } else if (location.equals("Library")) {
+            trigSA = "DB$ ChangeZone | Defined$ DelayTriggerRememberedLKI | Origin$ Battlefield | Destination$ Library | Shuffle$ True";
         } else if (location.equals("SacrificeCtrl")) {
             trigSA = "DB$ SacrificeAll | Defined$ DelayTriggerRememberedLKI";
         } else if (location.equals("Sacrifice")) {
@@ -427,6 +443,7 @@ public abstract class SpellAbilityEffect {
         newSa.setIntrinsic(intrinsic);
         trig.setOverridingAbility(newSa);
         trig.setSpawningAbility(sa.copy(sa.getHostCard(), true));
+        trig.setKeyword(trig.getSpawningAbility().getKeyword());
         sa.getActivatingPlayer().getGame().getTriggerHandler().registerDelayedTrigger(trig);
     }
 
@@ -600,10 +617,10 @@ public abstract class SpellAbilityEffect {
         if (name.startsWith("Emblem")) {
             eff.setEmblem(true);
             // Emblem needs to be colorless
-            eff.setColor(MagicColor.COLORLESS);
+            eff.setColor(ColorSet.C);
             eff.setRarity(CardRarity.Common);
         } else {
-            eff.setColor(hostCard.getColor().getColor());
+            eff.setColor(hostCard.getColor());
             eff.setRarity(hostCard.getRarity());
         }
 
@@ -653,7 +670,7 @@ public abstract class SpellAbilityEffect {
             }
 
             // build an Effect with that information
-            String name = host.getName() + "'s Effect";
+            String name = host.getDisplayName() + "'s Effect";
 
             final Card eff = createEffect(sa, controller, name, host.getImageKey());
             if (cards != null) {
@@ -718,7 +735,7 @@ public abstract class SpellAbilityEffect {
             Map<String, Object> params = Maps.newHashMap();
             params.put("Attacker", c);
             defender = sa.getActivatingPlayer().getController().chooseSingleEntityForEffect(defs, sa,
-                    Localizer.getInstance().getMessage("lblChooseDefenderToAttackWithCard", CardTranslation.getTranslatedName(c.getName())), false, params);
+                    Localizer.getInstance().getMessage("lblChooseDefenderToAttackWithCard", c.getTranslatedName()), false, params);
 
             if (defender != null && !combat.getAttackersOf(defender).contains(c)) {
                 // we might be reselecting
@@ -767,7 +784,11 @@ public abstract class SpellAbilityEffect {
         return combatChanged;
     }
 
-    protected static GameCommand untilHostLeavesPlayCommand(final CardZoneTable triggerList, final SpellAbility sa) {
+    protected static void changeZoneUntilCommand(final CardZoneTable triggerList, final SpellAbility sa) {
+        if (!sa.hasParam("Duration")) {
+            return;
+        }
+
         final Card hostCard = sa.getHostCard();
         final Game game = hostCard.getGame();
         hostCard.addUntilLeavesBattlefield(triggerList.allCards());
@@ -782,7 +803,7 @@ public abstract class SpellAbilityEffect {
             lki = null;
         }
 
-        return new GameCommand() {
+        GameCommand gc = new GameCommand() {
 
             private static final long serialVersionUID = 1L;
 
@@ -837,6 +858,13 @@ public abstract class SpellAbilityEffect {
             }
 
         };
+
+        // corner case can lead to host exiling itself during the effect
+        if (sa.getParam("Duration").contains("UntilHostLeavesPlay") && !hostCard.isInPlay()) {
+            gc.run();
+        } else {
+            addUntilCommand(sa, gc);
+        }
     }
 
     protected static void discard(SpellAbility sa, final boolean effect, Map<Player, CardCollectionView> discardedMap, Map<AbilityKey, Object> params) {
@@ -863,10 +891,6 @@ public abstract class SpellAbilityEffect {
                 runParams.put(AbilityKey.Cause, sa);
                 runParams.put(AbilityKey.DiscardedBefore, discardedBefore.get(p));
                 p.getGame().getTriggerHandler().runTrigger(TriggerType.DiscardedAll, runParams, false);
-
-                if (sa.hasParam("RememberDiscardingPlayers")) {
-                    sa.getHostCard().addRemembered(p);
-                }
             }
         }
     }
@@ -897,6 +921,8 @@ public abstract class SpellAbilityEffect {
             } else {
                 game.getUpkeep().addUntilEnd(controller, until);
             }
+        } else if ("UntilTheEndOfYourNextUntap".equals(duration)) {
+            game.getUntap().addUntilEnd(controller, until);
         } else if ("UntilNextEndStep".equals(duration)) {
             game.getEndOfTurn().addAt(until);
         } else if ("UntilYourNextEndStep".equals(duration)) {
@@ -997,8 +1023,9 @@ public abstract class SpellAbilityEffect {
         return true;
     }
 
-    public static Player getNewChooser(final SpellAbility sa, final Player activator, final Player loser) {
+    public static Player getNewChooser(final SpellAbility sa, final Player loser) {
         // CR 800.4g
+        final Player activator = sa.getActivatingPlayer();
         final PlayerCollection options;
         if (loser.isOpponentOf(activator)) {
             options = activator.getOpponents();
@@ -1038,11 +1065,14 @@ public abstract class SpellAbilityEffect {
         // if ability was granted use that source so they can be kept apart later
         if (cause.isCopiedTrait()) {
             exilingSource = cause.getOriginalHost();
+        } else if (!cause.isSpell() && cause.getKeyword() != null && cause.getKeyword().getStatic() != null) {
+            exilingSource = cause.getKeyword().getStatic().getOriginalHost();
         }
         movedCard.setExiledWith(exilingSource);
         Player exiler = cause.hasParam("DefinedExiler") ?
                 getDefinedPlayersOrTargeted(cause, "DefinedExiler").get(0) : cause.getActivatingPlayer();
         movedCard.setExiledBy(exiler);
+        movedCard.setExiledSA(cause);
     }
 
     public static GameCommand exileEffectCommand(final Game game, final Card effect) {

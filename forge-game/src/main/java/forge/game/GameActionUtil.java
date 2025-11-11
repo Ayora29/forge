@@ -19,8 +19,9 @@ package forge.game;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
+import forge.card.ColorSet;
 import forge.card.GamePieceType;
-import forge.card.MagicColor;
 import forge.card.mana.ManaCost;
 import forge.game.ability.AbilityFactory;
 import forge.game.ability.AbilityUtils;
@@ -31,6 +32,7 @@ import forge.game.card.*;
 import forge.game.card.CardPlayOption.PayManaCost;
 import forge.game.cost.Cost;
 import forge.game.cost.CostPayment;
+import forge.game.keyword.Keyword;
 import forge.game.keyword.KeywordInterface;
 import forge.game.player.Player;
 import forge.game.player.PlayerCollection;
@@ -43,6 +45,7 @@ import forge.game.spellability.*;
 import forge.game.staticability.StaticAbility;
 import forge.game.staticability.StaticAbilityAlternativeCost;
 import forge.game.staticability.StaticAbilityLayer;
+import forge.game.staticability.StaticAbilityMode;
 import forge.game.zone.Zone;
 import forge.game.zone.ZoneType;
 import forge.util.Aggregates;
@@ -123,9 +126,21 @@ public final class GameActionUtil {
 
             // need to be done there before static abilities does reset the card
             // These Keywords depend on the Mana Cost of for Split Cards
-            if (sa.isBasicSpell() && !sa.isLandAbility()) {
+            if (sa.isBasicSpell()) {
                 for (final KeywordInterface inst : source.getKeywords()) {
                     final String keyword = inst.getOriginal();
+
+                    if (keyword.startsWith("Mayhem")) {
+                        if (!source.isInZone(ZoneType.Graveyard) || !source.wasDiscarded() || !source.enteredThisTurn()) {
+                            continue;
+                        }
+
+                        alternatives.add(getGraveyardSpellByKeyword(inst, sa, activator, AlternativeCost.Mayhem));
+                    }
+
+                    if (sa.isLandAbility()) {
+                        continue;
+                    }
 
                     if (keyword.startsWith("Escape")) {
                         if (!source.isInZone(ZoneType.Graveyard)) {
@@ -163,26 +178,17 @@ public final class GameActionUtil {
                             continue;
                         }
 
-                        SpellAbility flashback = null;
-
-                        // there is a flashback cost (and not the cards cost)
-                        if (keyword.contains(":")) { // K:Flashback:Cost:ExtraParams:ExtraDescription
-                            final String[] k = keyword.split(":");
-                            flashback = sa.copyWithManaCostReplaced(activator, new Cost(k[1], false));
-                            String extraParams =  k.length > 2 ? k[2] : "";
-                            if (!extraParams.isEmpty()) {
-                                for (Map.Entry<String, String> param : AbilityFactory.getMapParams(extraParams).entrySet()) {
-                                    flashback.putParam(param.getKey(), param.getValue());
-                                }
-                            }
-                        } else { // same cost as original (e.g. Otaria plane)
-                            flashback = sa.copy(activator);
+                        alternatives.add(getGraveyardSpellByKeyword(inst, sa, activator, AlternativeCost.Flashback));
+                    } else if (keyword.startsWith("Harmonize")) {
+                        if (!source.isInZone(ZoneType.Graveyard)) {
+                            continue;
                         }
-                        flashback.setAlternativeCost(AlternativeCost.Flashback);
-                        flashback.getRestrictions().setZone(ZoneType.Graveyard);
-                        flashback.setKeyword(inst);
-                        flashback.setIntrinsic(inst.isIntrinsic());
-                        alternatives.add(flashback);
+
+                        if (keyword.equals("Harmonize") && source.getManaCost().isNoCost()) {
+                            continue;
+                        }
+
+                        alternatives.add(getGraveyardSpellByKeyword(inst, sa, activator, AlternativeCost.Harmonize));
                     } else if (keyword.startsWith("Foretell")) {
                         // Foretell cast only from Exile
                         if (!source.isInZone(ZoneType.Exile) || !source.isForetold() || source.enteredThisTurn() ||
@@ -237,6 +243,7 @@ public final class GameActionUtil {
                     }
                     stackCopy.setLastKnownZone(game.getStackZone());
                     stackCopy.setCastFrom(oldZone);
+                    stackCopy.setCastSA(sa);
                     lkicheck = true;
 
                     stackCopy.clearStaticChangedCardKeywords(false);
@@ -287,6 +294,30 @@ public final class GameActionUtil {
         return alternatives;
     }
 
+    public static SpellAbility getGraveyardSpellByKeyword(KeywordInterface inst, SpellAbility sa, Player activator, AlternativeCost altCost) {
+        String keyword = inst.getOriginal();
+        SpellAbility newSA = null;
+
+        // there is a flashback cost (and not the cards cost)
+        if (keyword.contains(":")) { // K:Flashback:Cost:ExtraParams:ExtraDescription
+            final String[] k = keyword.split(":");
+            newSA = sa.copyWithManaCostReplaced(activator, new Cost(k[1], false));
+            String extraParams =  k.length > 2 ? k[2] : "";
+            if (!extraParams.isEmpty()) {
+                for (Map.Entry<String, String> param : AbilityFactory.getMapParams(extraParams).entrySet()) {
+                    newSA.putParam(param.getKey(), param.getValue());
+                }
+            }
+        } else { // same cost as original (e.g. Otaria plane)
+            newSA = sa.copy(activator);
+        }
+        newSA.setAlternativeCost(altCost);
+        newSA.getRestrictions().setZone(ZoneType.Graveyard);
+        newSA.setKeyword(inst);
+        newSA.setIntrinsic(inst.isIntrinsic());
+        return newSA;
+    }
+
     public static List<SpellAbility> getMayPlaySpellOptions(final SpellAbility sa, final Card source, final Player activator, boolean altCostOnly) {
         final List<SpellAbility> alternatives = Lists.newArrayList();
 
@@ -302,6 +333,10 @@ public final class GameActionUtil {
             // non basic are only allowed if PayManaCost is yes
             if ((!sa.isBasicSpell() || (sa.costHasManaX() && sa.getPayCosts().getCostMana() != null
                     && sa.getPayCosts().getCostMana().getXMin() > 0)) && o.getPayManaCost() == PayManaCost.NO) {
+                continue;
+            }
+            // Timeline Culler overrides zone restriction
+            if (sa.isKeyword(Keyword.WARP) && !sa.getHostCard().equals(o.getHost())) {
                 continue;
             }
             final Card host = o.getHost();
@@ -390,7 +425,7 @@ public final class GameActionUtil {
         costSources.addAll(game.getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES));
         for (final Card ca : costSources) {
             for (final StaticAbility stAb : ca.getStaticAbilities()) {
-                if (!stAb.checkConditions("OptionalCost")) {
+                if (!stAb.checkConditions(StaticAbilityMode.OptionalCost)) {
                     continue;
                 }
 
@@ -461,9 +496,11 @@ public final class GameActionUtil {
                 String[] k = keyword.split(":");
                 final Cost cost = new Cost(k[1], false);
                 costs.add(new OptionalCostValue(OptionalCost.Flash, cost));
+            } else if (keyword.startsWith("Offering")) {
+                final String type = keyword.split(":")[1];
+                final Cost cost = new Cost("Sac<1/" + type + ">", false);
+                costs.add(new OptionalCostValue(OptionalCost.Offering, cost));
             }
-
-            // Surge while having OptionalCost is none of them
         }
 
         // reset static abilities
@@ -490,7 +527,9 @@ public final class GameActionUtil {
             result.putParam("RaiseCost", sa.getParam("RaiseCost"));
         }
         for (OptionalCostValue v : list) {
-            result.getPayCosts().add(v.getCost());
+            if (v.getType() != OptionalCost.Offering) {
+                result.getPayCosts().add(v.getCost());
+            }
             result.addOptionalCost(v.getType());
 
             // add some extra logic, try to move it to other parts
@@ -500,6 +539,7 @@ public final class GameActionUtil {
                 result.getRestrictions().setZone(ZoneType.Graveyard);
                 break;
             case Flash:
+            case Offering:
                 result.getRestrictions().setInstantSpeed(true);
                 break;
             default:
@@ -582,9 +622,8 @@ public final class GameActionUtil {
                         " or greater>";
                 final Cost cost = new Cost(casualtyCost, false);
                 String str = "Pay for Casualty? " + cost.toSimpleString();
-                boolean v = pc.addKeywordCost(sa, cost, ki, str);
 
-                if (v) {
+                if (pc.addKeywordCost(sa, cost, ki, str)) {
                     if (result == null) {
                         result = sa.copy();
                     }
@@ -594,7 +633,7 @@ public final class GameActionUtil {
                 }
             } else if (o.equals("Conspire")) {
                 final String conspireCost = "tapXType<2/Creature.SharesColorWith/" +
-                    "creature that shares a color with " + host.getName() + ">";
+                    "creature that shares a color with " + host.getDisplayName() + ">";
                 final Cost cost = new Cost(conspireCost, false);
                 String str = "Pay for Conspire? " + cost.toSimpleString();
 
@@ -630,9 +669,7 @@ public final class GameActionUtil {
                 final Cost cost = new Cost(k[1], false);
                 String str = "Pay for Offspring? " + cost.toSimpleString();
 
-                boolean v = pc.addKeywordCost(sa, cost, ki, str);
-
-                if (v) {
+                if (pc.addKeywordCost(sa, cost, ki, str)) {
                     if (result == null) {
                         result = sa.copy();
                     }
@@ -679,6 +716,25 @@ public final class GameActionUtil {
             }
         }
 
+        if (sa.isHarmonize()) {
+            CardCollectionView creatures = activator.getCreaturesInPlay();
+            if (!creatures.isEmpty()) {
+                int max = Aggregates.max(creatures, Card::getNetPower);
+                int n = pc.chooseNumber(sa, "Choose power of creature to tap", 0, max);
+                final String harmonizeCost = "tapXType<1/Creature.powerEQ" + n + "/creature for Harmonize>";
+                final Cost cost = new Cost(harmonizeCost, false);
+
+                if (pc.addKeywordCost(sa, cost, sa.getKeyword(), "Tap creature?")) {
+                    if (result == null) {
+                        result = sa.copy();
+                    }
+                    result.getPayCosts().add(cost);
+                    reset = true;
+                    result.setOptionalKeywordAmount(sa.getKeyword(), n);
+                }
+            }
+        }
+
         if (host.isCreature()) {
             String kw = "As an additional cost to cast creature spells," +
                     " you may pay any amount of mana. If you do, that creature enters " +
@@ -688,7 +744,7 @@ public final class GameActionUtil {
                 for (KeywordInterface ki : c.getKeywords()) {
                     if (kw.equals(ki.getOriginal())) {
                         final Cost cost = new Cost(ManaCost.ONE, false);
-                        String str = "Choose Amount for " + c.getName() + ": " + cost.toSimpleString();
+                        String str = "Choose Amount for " + c.getDisplayName() + ": " + cost.toSimpleString();
 
                         int v = pc.chooseNumberForKeywordCost(sa, cost, ki, str, Integer.MAX_VALUE);
 
@@ -732,7 +788,7 @@ public final class GameActionUtil {
         eff.setOwner(controller);
 
         eff.setImageKey(sourceCard.getImageKey());
-        eff.setColor(MagicColor.COLORLESS);
+        eff.setColor(ColorSet.C);
         eff.setGamePieceType(GamePieceType.EFFECT);
         // try to get the SpellAbility from the mana ability
         //eff.setEffectSource((SpellAbility)null);
@@ -823,14 +879,12 @@ public final class GameActionUtil {
         } else if (abMana.isComboMana()) {
             // amount is already taken care of in resolve method for combination mana, just append baseMana
             sb.append(baseMana);
+        } else if (StringUtils.isNumeric(baseMana)) {
+            sb.append(amount * Integer.parseInt(baseMana));
         } else {
-            if (StringUtils.isNumeric(baseMana)) {
-                sb.append(amount * Integer.parseInt(baseMana));
-            } else {
-                sb.append(baseMana);
-                for (int i = 1; i < amount; i++) {
-                    sb.append(" ").append(baseMana);
-                }
+            sb.append(baseMana);
+            for (int i = 1; i < amount; i++) {
+                sb.append(" ").append(baseMana);
             }
         }
         return sb.toString();
@@ -902,14 +956,16 @@ public final class GameActionUtil {
         }
 
         if (fromZone != null && !fromZone.is(ZoneType.None)) { // and not a copy
+            // add back to where it came from, hopefully old state
+            // skip GameAction
+            oldCard.getZone().remove(oldCard);
+
             // might have been an alternative lki host
             oldCard = ability.getCardState().getCard();
 
             oldCard.setCastSA(null);
             oldCard.setCastFrom(null);
-            // add back to where it came from, hopefully old state
-            // skip GameAction
-            oldCard.getZone().remove(oldCard);
+
             // in some rare cases the old position no longer exists (Panglacial Wurm + Selvala)
             Integer newPosition = zonePosition >= 0 ? Math.min(zonePosition, fromZone.size()) : null;
             fromZone.add(oldCard, newPosition, null, true);
@@ -936,9 +992,6 @@ public final class GameActionUtil {
             oldCard.setBackSide(false);
             oldCard.setState(oldCard.getFaceupCardStateName(), true);
             oldCard.unanimateBestow();
-            if (ability.isDisturb() || ability.hasParam("CastTransformed")) {
-                oldCard.undoIncrementTransformedTimestamp();
-            }
 
             if (ability.hasParam("Prototype")) {
                 oldCard.removeCloneState(oldCard.getPrototypeTimestamp());

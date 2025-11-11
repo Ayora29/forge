@@ -33,11 +33,11 @@ public enum TrackableProperty {
     Flipped(TrackableTypes.BooleanType),
     Facedown(TrackableTypes.BooleanType),
     Foretold(TrackableTypes.BooleanType),
-    Manifested(TrackableTypes.BooleanType),
-    Cloaked(TrackableTypes.BooleanType),
     Modal(TrackableTypes.BooleanType),
-    Adventure(TrackableTypes.BooleanType),
+    Secondary(TrackableTypes.BooleanType),
     DoubleFaced(TrackableTypes.BooleanType),
+    FacedownImageKey(TrackableTypes.StringType),
+    PaperFoil(TrackableTypes.BooleanType),
 
     //TODO?
     Cloner(TrackableTypes.StringType),
@@ -67,7 +67,6 @@ public enum TrackableProperty {
     ChosenType2(TrackableTypes.StringType),
     NotedTypes(TrackableTypes.StringListType),
     ChosenColors(TrackableTypes.StringListType),
-    ChosenColorID(TrackableTypes.StringSetType),
     ChosenCards(TrackableTypes.CardViewCollectionType),
     ChosenNumber(TrackableTypes.StringType),
     StoredRolls(TrackableTypes.StringListType),
@@ -102,6 +101,7 @@ public enum TrackableProperty {
     NeedsTransformAnimation(TrackableTypes.BooleanType, FreezeMode.IgnoresFreeze),
     NeedsUntapAnimation(TrackableTypes.BooleanType, FreezeMode.IgnoresFreeze),
     NeedsTapAnimation(TrackableTypes.BooleanType, FreezeMode.IgnoresFreeze),
+    MarkedColors(TrackableTypes.ColorSetType),
 
     ImprintedCards(TrackableTypes.CardViewCollectionType),
     ExiledCards(TrackableTypes.CardViewCollectionType),
@@ -131,6 +131,7 @@ public enum TrackableProperty {
     FunctionalVariant(TrackableTypes.StringType),
     OracleText(TrackableTypes.StringType),
     RulesText(TrackableTypes.StringType),
+    OracleName(TrackableTypes.StringType),
     Power(TrackableTypes.IntegerType),
     Toughness(TrackableTypes.IntegerType),
     Loyalty(TrackableTypes.StringType),
@@ -138,6 +139,7 @@ public enum TrackableProperty {
     AttractionLights(TrackableTypes.IntegerSetType),
     ChangedColorWords(TrackableTypes.StringMapType),
     HasChangedColors(TrackableTypes.BooleanType),
+    HasPrintedPT(TrackableTypes.BooleanType),
     ChangedTypes(TrackableTypes.StringMapType),
 
     //check produce mana for BG

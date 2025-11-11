@@ -1,7 +1,6 @@
 package forge.player;
 
 import com.google.common.collect.Iterables;
-import forge.ImageKeys;
 import forge.card.CardStateName;
 import forge.card.mana.ManaCost;
 import forge.game.Game;
@@ -65,7 +64,6 @@ public class HumanPlay {
             return true;
         }
 
-        boolean isforetold = source.isForetold();
         boolean castFaceDown = sa.isCastFaceDown();
         boolean flippedToCast = sa.isSpell() && source.isFaceDown();
 
@@ -96,13 +94,12 @@ public class HumanPlay {
                 Card rollback = p.getGame().getCardState(source);
                 if (castFaceDown) {
                     rollback.setFaceDown(false);
+                    rollback.updateStateForView();
                 } else if (flippedToCast) {
                     // need to get the changed card if able
                     rollback.turnFaceDown(true);
-                    //need to set correct imagekey when forcing facedown
-                    rollback.setImageKey(ImageKeys.getTokenKey(isforetold ? ImageKeys.FORETELL_IMAGE : ImageKeys.HIDDEN_CARD));
                     if (rollback.isInZone(ZoneType.Exile)) {
-                        rollback.addMayLookTemp(p);
+                        rollback.addMayLookFaceDownExile(p);
                     }
                 }
             }
@@ -410,7 +407,7 @@ public class HumanPlay {
             }
             else if (part instanceof CostReveal) {
                 CostReveal costReveal = (CostReveal) part;
-                CardCollectionView list = CardLists.getValidCards(p.getCardsIn(costReveal.getRevealFrom()), part.getType(), p, source, sourceAbility);
+                CardCollectionView list = CardLists.getValidCards(p.getCardsIn(costReveal.getRevealFrom()), part.getType().split(";"), p, source, sourceAbility);
                 int amount = part.getAbilityAmount(sourceAbility);
                 boolean hasPaid = payCostPart(controller, p, sourceAbility, hcd.isEffect(), (CostPartWithList)part, amount, list, Localizer.getInstance().getMessage("lblReveal") + orString);
                 if (!hasPaid) { return false; }
@@ -428,7 +425,7 @@ public class HumanPlay {
                 }
             }
             else if (part instanceof CostPayEnergy) {
-                CounterType counterType = CounterType.get(CounterEnumType.ENERGY);
+                CounterType counterType = CounterEnumType.ENERGY;
                 int amount = part.getAbilityAmount(sourceAbility);
 
                 if (!mandatory && !p.getController().confirmPayment(part, Localizer.getInstance().getMessage("lblDoYouWantSpendNTargetTypeCounter", String.valueOf(amount), counterType.getName()), sourceAbility)) {
@@ -517,6 +514,7 @@ public class HumanPlay {
                 hostCard.addExiledCard(d);
                 d.setExiledWith(hostCard);
                 d.setExiledBy(hostCard.getController());
+                d.setExiledSA(ability);
             }
         }
         if (ability.isOffering() && ability.getSacrificedAsOffering() != null) {

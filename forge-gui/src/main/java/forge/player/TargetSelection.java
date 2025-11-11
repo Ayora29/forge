@@ -40,6 +40,7 @@ import forge.util.TextUtil;
 
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -80,7 +81,6 @@ public class TargetSelection {
         final int maxTargets = numTargets != null ? numTargets : ability.getMaxTargets();
         //final int maxTotalCMC = tgt.getMaxTotalCMC(ability.getHostCard(), ability);
         final int numTargeted = ability.getTargets().size();
-        final boolean isSingleZone = tgt.isSingleZone();
 
         final boolean hasEnoughTargets = minTargets == 0 || numTargeted >= minTargets;
         final boolean hasAllTargets = numTargeted == maxTargets && maxTargets > 0;
@@ -148,19 +148,6 @@ public class TargetSelection {
             validTargets = new CardCollection(IterableUtil.filter(validTargets, filter));
         }
 
-        // single zone
-        if (isSingleZone) {
-            final List<Card> removeCandidates = new ArrayList<>();
-            final Card firstTgt = ability.getTargetCard();
-            if (firstTgt != null) {
-                for (Card t : validTargets) {
-                    if (!t.getController().equals(firstTgt.getController())) {
-                        removeCandidates.add(t);
-                    }
-                }
-                validTargets.removeAll(removeCandidates);
-            }
-        }
         if (validTargets.isEmpty()) {
             // If all targets are filtered after applying MustTarget static ability, the spell can't be cast or the ability can't be activated
             if (mustTargetFiltered) {
@@ -194,7 +181,7 @@ public class TargetSelection {
         }
 
         PlayerView playerView = controller.getLocalPlayerView();
-        PlayerZoneUpdates playerZoneUpdates = controller.getGui().openZones(playerView, zones, playersWithValidTargets, true);
+        PlayerZoneUpdates playerZoneUpdates = controller.getGui().openZones(playerView, validTargets.stream().map(c -> c.getZone().getZoneType()).collect(Collectors.toSet()), playersWithValidTargets, true);
         if (!zones.contains(ZoneType.Stack)) {
             InputSelectTargets inp = new InputSelectTargets(controller, validTargets, ability, mandatory, numTargets, divisionValues, filter, mustTargetFiltered);
             inp.showAndWait();

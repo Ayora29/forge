@@ -287,6 +287,11 @@ public class WrappedAbility extends Ability {
     }
 
     @Override
+    public boolean hasSVar(String name) {
+        return sa.hasSVar(name);
+    }
+
+    @Override
     public String getSVar(String name) {
         return sa.getSVar(name);
     }
@@ -294,6 +299,11 @@ public class WrappedAbility extends Ability {
     @Override
     public Integer getSVarInt(String name) {
         return sa.getSVarInt(name);
+    }
+
+    @Override
+    public void setSVar(final String name, final String value) {
+        sa.setSVar(name, value);
     }
 
     @Override
@@ -352,11 +362,6 @@ public class WrappedAbility extends Ability {
     @Override
     public void setTargetCard(final Card card) {
         sa.setTargetCard(card);
-    }
-
-    @Override
-    public void setSourceTrigger(final int id) {
-        sa.setSourceTrigger(id);
     }
 
     @Override
@@ -440,7 +445,7 @@ public class WrappedAbility extends Ability {
 
         if (decider != null) {
             if (!decider.isInGame()) {
-                decider = SpellAbilityEffect.getNewChooser(sa, getActivatingPlayer(), decider);
+                decider = SpellAbilityEffect.getNewChooser(sa, decider);
             }
             if (!decider.getController().confirmTrigger(this)) {
                 return;

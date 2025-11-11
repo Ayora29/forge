@@ -17,6 +17,7 @@ public enum TriggerType {
     AbilityResolves(TriggerAbilityResolves.class),
     AbilityTriggered(TriggerAbilityTriggered.class),
     Adapt(TriggerAdapt.class),
+    Airbend(TriggerElementalbend.class),
     Always(TriggerAlways.class),
     Attached(TriggerAttached.class),
     AttackerBlocked(TriggerAttackerBlocked.class),
@@ -52,6 +53,7 @@ public enum TriggerType {
     CounterAdded(TriggerCounterAdded.class),
     CounterAddedOnce(TriggerCounterAddedOnce.class),
     CounterPlayerAddedAll(TriggerCounterPlayerAddedAll.class),
+    CounterTypeAddedAll(TriggerCounterTypeAddedAll.class),
     CounterAddedAll(TriggerCounterAddedAll.class),
     Countered(TriggerCountered.class),
     CounterRemoved(TriggerCounterRemoved.class),
@@ -73,9 +75,11 @@ public enum TriggerType {
     Discover(TriggerDiscover.class),
     Drawn(TriggerDrawn.class),
     DungeonCompleted(TriggerCompletedDungeon.class),
+    Earthbend(TriggerElementalbend.class),
     Evolved(TriggerEvolved.class),
     ExcessDamage(TriggerExcessDamage.class),
     ExcessDamageAll(TriggerExcessDamageAll.class),
+    ElementalBend(TriggerElementalbend.class),
     Enlisted(TriggerEnlisted.class),
     Exerted(TriggerExerted.class),
     Exiled(TriggerExiled.class),
@@ -83,6 +87,7 @@ public enum TriggerType {
     Explores(TriggerExplores.class),
     Fight(TriggerFight.class),
     FightOnce(TriggerFightOnce.class),
+    Firebend(TriggerElementalbend.class),
     FlippedCoin(TriggerFlippedCoin.class),
     Forage(TriggerForage.class),
     Foretell(TriggerForetell.class),
@@ -134,6 +139,7 @@ public enum TriggerType {
     SpellCast(TriggerSpellAbilityCastOrCopy.class),
     SpellCastOrCopy(TriggerSpellAbilityCastOrCopy.class),
     SpellCopy(TriggerSpellAbilityCastOrCopy.class),
+    Stationed(TriggerCrewedSaddled.class),
     Surveil(TriggerSurveil.class),
     TakesInitiative(TriggerTakesInitiative.class),
     TapAll(TriggerTapAll.class),
@@ -150,7 +156,9 @@ public enum TriggerType {
     UntapAll(TriggerUntapAll.class),
     Untaps(TriggerUntaps.class),
     VisitAttraction(TriggerVisitAttraction.class),
-    Vote(TriggerVote.class);
+    Vote(TriggerVote.class),
+    Waterbend(TriggerElementalbend.class)          
+    ;
 
     private final Constructor<? extends Trigger> constructor;
 

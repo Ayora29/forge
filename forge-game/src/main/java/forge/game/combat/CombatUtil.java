@@ -70,7 +70,7 @@ public class CombatUtil {
         final Game game = playerWhoAttacks.getGame();
         final CardCollection battles = CardLists.filter(game.getCardsIn(ZoneType.Battlefield), CardPredicates.BATTLES);
         for (Card battle : battles) {
-            if (battle.getType().hasSubtype("Siege") && battle.getProtectingPlayer().isOpponentOf(playerWhoAttacks)) {
+            if (battle.getProtectingPlayer().isOpponentOf(playerWhoAttacks)) {
                 defenders.add(battle);
             }
         }
@@ -225,20 +225,9 @@ public class CombatUtil {
                     if (!ge.equals(defender) && ge instanceof Player) {
                         // found a player which does not goad that creature
                         // and creature can attack this player or planeswalker
-                        if (!attacker.isGoadedBy((Player) ge) && !ge.hasKeyword("Creatures your opponents control attack a player other than you if able.") && canAttack(attacker, ge)) {
+                        if (!attacker.isGoadedBy((Player) ge) && canAttack(attacker, ge)) {
                             return false;
                         }
-                    }
-                }
-            }
-        }
-
-        // Quasi-goad logic for "Kardur, Doomscourge" etc. that isn't goad but behaves the same
-        if (defender != null && defender.hasKeyword("Creatures your opponents control attack a player other than you if able.")) {
-            for (GameEntity ge : getAllPossibleDefenders(attacker.getController())) {
-                if (!ge.equals(defender) && ge instanceof Player) {
-                    if (!ge.hasKeyword("Creatures your opponents control attack a player other than you if able.") && canAttack(attacker, ge)) {
-                        return false;
                     }
                 }
             }
@@ -480,7 +469,7 @@ public class CombatUtil {
      * @return a boolean.
      */
     public static boolean canBlock(final Card blocker, final boolean nextTurn) {
-        if (blocker == null) {
+        if (blocker == null || !blocker.isCreature()) {
             return false;
         }
 
@@ -488,12 +477,18 @@ public class CombatUtil {
             return false;
         }
 
-        if (!nextTurn && blocker.isTapped() && !blocker.hasKeyword("CARDNAME can block as though it were untapped.")) {
+        if (!nextTurn && blocker.isPhasedOut()) {
             return false;
         }
 
-        if (blocker.hasKeyword("CARDNAME can't block.") || blocker.hasKeyword("CARDNAME can't attack or block.")
-                || blocker.isPhasedOut()) {
+        if (!nextTurn && blocker.isTapped() && !StaticAbilityCantAttackBlock.canBlockTapped(blocker)) {
+            return false;
+        }
+
+        if (blocker.hasKeyword("CARDNAME can't block.") || blocker.hasKeyword("CARDNAME can't attack or block.")) {
+            return false;
+        }
+        if (StaticAbilityCantAttackBlock.cantBlock(blocker)) {
             return false;
         }
 

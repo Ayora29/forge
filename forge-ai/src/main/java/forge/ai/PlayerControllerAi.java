@@ -15,6 +15,7 @@ import forge.game.*;
 import forge.game.ability.AbilityUtils;
 import forge.game.ability.ApiType;
 import forge.game.ability.effects.CharmEffect;
+import forge.game.ability.effects.RollDiceEffect;
 import forge.game.card.*;
 import forge.game.combat.Combat;
 import forge.game.cost.Cost;
@@ -138,9 +139,9 @@ public class PlayerControllerAi extends PlayerController {
             }
         }
 
-        boolean sbLimitedFormats = getAi().getBooleanProperty(AiProps.SIDEBOARDING_IN_LIMITED_FORMATS);
-        boolean sbSharedTypesOnly = getAi().getBooleanProperty(AiProps.SIDEBOARDING_SHARED_TYPE_ONLY);
-        boolean sbPlaneswalkerException = getAi().getBooleanProperty(AiProps.SIDEBOARDING_PLANESWALKER_EQ_CREATURE);
+        boolean sbLimitedFormats = getAi().getBoolProperty(AiProps.SIDEBOARDING_IN_LIMITED_FORMATS);
+        boolean sbSharedTypesOnly = getAi().getBoolProperty(AiProps.SIDEBOARDING_SHARED_TYPE_ONLY);
+        boolean sbPlaneswalkerException = getAi().getBoolProperty(AiProps.SIDEBOARDING_PLANESWALKER_EQ_CREATURE);
         int sbChanceOnWin = getAi().getIntProperty(AiProps.SIDEBOARDING_CHANCE_ON_WIN);
         int sbChancePerCard = getAi().getIntProperty(AiProps.SIDEBOARDING_CHANCE_PER_CARD);
 
@@ -459,7 +460,11 @@ public class PlayerControllerAi extends PlayerController {
 
     @Override
     public boolean confirmReplacementEffect(ReplacementEffect replacementEffect, SpellAbility effectSA, GameEntity affected, String question) {
-        return brains.aiShouldRun(replacementEffect, effectSA, affected);
+        Card host = replacementEffect.getHostCard();
+        if (host.hasAlternateState()) {
+            host = host.getGame().getCardState(host);
+        }
+        return brains.aiShouldRun(replacementEffect, effectSA, host, affected);
     }
 
     @Override
@@ -746,6 +751,30 @@ public class PlayerControllerAi extends PlayerController {
     }
 
     @Override
+    public List<Integer> chooseDiceToReroll(List<Integer> rolls) {
+        //TODO create AI logic for this
+        return new ArrayList<>();
+    }
+
+    @Override
+    public Integer chooseRollToModify(List<Integer> rolls) {
+        //TODO create AI logic for this
+        return Aggregates.random(rolls);
+    }
+
+    @Override
+    public RollDiceEffect.DieRollResult chooseRollToSwap(List<RollDiceEffect.DieRollResult> rolls) {
+        //TODO create AI logic for this
+        return Aggregates.random(rolls);
+    }
+
+    @Override
+    public String chooseRollSwapValue(List<String> swapChoices, Integer currentResult, int power, int toughness) {
+        //TODO create AI logic for this
+        return Aggregates.random(swapChoices);
+    }
+
+    @Override
     public boolean mulliganKeepHand(Player firstPlayer, int cardsToReturn)  {
         return !ComputerUtil.wantMulligan(player, cardsToReturn);
     }
@@ -999,13 +1028,13 @@ public class PlayerControllerAi extends PlayerController {
         if ((colors.getColor() & chosenColorMask) != 0) {
             return chosenColorMask;
         }
-        return Iterables.getFirst(colors, (byte)0);
+        return Iterables.getFirst(colors, MagicColor.Color.COLORLESS).getColorMask();
     }
 
     @Override
     public byte chooseColor(String message, SpellAbility sa, ColorSet colors) {
         if (colors.countColors() < 2) {
-            return Iterables.getFirst(colors, MagicColor.WHITE);
+            return Iterables.getFirst(colors, MagicColor.Color.WHITE).getColorMask();
         }
         // You may switch on sa.getApi() here and use sa.getParam("AILogic")
         CardCollectionView hand = player.getCardsIn(ZoneType.Hand);
@@ -1018,7 +1047,7 @@ public class PlayerControllerAi extends PlayerController {
         if ((colors.getColor() & chosenColorMask) != 0) {
             return chosenColorMask;
         }
-        return Iterables.getFirst(colors, MagicColor.WHITE);
+        return Iterables.getFirst(colors, MagicColor.Color.WHITE).getColorMask();
     }
 
     @Override
@@ -1207,6 +1236,11 @@ public class PlayerControllerAi extends PlayerController {
         return false;
     }
 
+    public boolean payCostDuringRoll(final Cost cost, final SpellAbility sa, final FCollectionView<Player> allPayers) {
+        // TODO logic for AI to pay rerolls and modification costs
+        return false;
+    }
+
     @Override
     public void orderAndPlaySimultaneousSa(List<SpellAbility> activePlayerSAs) {
         for (final SpellAbility sa : getAi().orderPlaySa(activePlayerSAs)) {
@@ -1240,9 +1274,15 @@ public class PlayerControllerAi extends PlayerController {
         }
     }
 
-    private boolean prepareSingleSa(final Card host, final SpellAbility sa, boolean isMandatory) {
+    private boolean prepareSingleSa(final Card host, SpellAbility sa, boolean isMandatory) {
         if (sa.getApi() == ApiType.Charm) {
-            return CharmEffect.makeChoices(sa);
+            if (!CharmEffect.makeChoices(sa)) {
+                return false;
+            }
+            if (!sa.hasParam("Random")) {
+                return true;
+            }
+            sa = sa.getSubAbility();
         }
         if (sa.hasParam("TargetingPlayer")) {
             Player targetingPlayer = AbilityUtils.getDefinedPlayers(host, sa.getParam("TargetingPlayer"), sa).get(0);
@@ -1318,6 +1358,11 @@ public class PlayerControllerAi extends PlayerController {
     }
 
     @Override
+    public void revealUnsupported(Map<Player, List<PaperCard>> unsupported) {
+        // Ai won't understand that anyway
+    }
+
+    @Override
     public Map<DeckSection, List<? extends PaperCard>> complainCardsCantPlayWell(Deck myDeck) {
         // TODO check if profile detection set to Auto
         setupAutoProfile(myDeck);
@@ -1327,7 +1372,7 @@ public class PlayerControllerAi extends PlayerController {
 
     @Override
     public CardCollectionView cheatShuffle(CardCollectionView list) {
-        return brains.getBooleanProperty(AiProps.CHEAT_WITH_MANA_ON_SHUFFLE) ? brains.cheatShuffle(list) : list;
+        return brains.getBoolProperty(AiProps.CHEAT_WITH_MANA_ON_SHUFFLE) ? brains.cheatShuffle(list) : list;
     }
 
     @Override
@@ -1499,12 +1544,10 @@ public class PlayerControllerAi extends PlayerController {
         }
 
         // Don't choose Tomb of Annihilation when life in danger unless we can win right away or can't lose for 0 life
-        if (ai.getController().isAI()) { // FIXME: is this needed? Can simulation ever run this for a non-AI player?
-            int lifeInDanger = (((PlayerControllerAi) ai.getController()).getAi().getIntProperty(AiProps.AI_IN_DANGER_THRESHOLD));
-            if ((ai.getLife() <= lifeInDanger && !ai.cantLoseForZeroOrLessLife())
-                    && !(ai.getLife() > 1 && ai.getWeakestOpponent().getLife() == 1)) {
-                dungeonNames.remove("Tomb of Annihilation");
-            }
+        int lifeInDanger = AiProfileUtil.getIntProperty(player, AiProps.AI_IN_DANGER_THRESHOLD);
+        if ((ai.getLife() <= lifeInDanger && !ai.cantLoseForZeroOrLessLife())
+                && !(ai.getLife() > 1 && ai.getWeakestOpponent().getLife() == 1)) {
+            dungeonNames.remove("Tomb of Annihilation");
         }
 
         try {

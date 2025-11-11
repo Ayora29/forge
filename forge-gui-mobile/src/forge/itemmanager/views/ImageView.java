@@ -11,7 +11,7 @@ import forge.Forge;
 import forge.Forge.KeyInputAdapter;
 import forge.Graphics;
 import forge.ImageKeys;
-import forge.adventure.scene.ShopScene;
+import forge.adventure.util.Config;
 import forge.assets.*;
 import forge.assets.FSkinColor.Colors;
 import forge.card.*;
@@ -33,12 +33,9 @@ import forge.util.ImageUtil;
 import forge.util.TextUtil;
 import forge.util.Utils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import static forge.assets.FSkin.getDefaultSkinFile;
@@ -77,6 +74,65 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
     private float totalZoomAmount;
     private Supplier<List<ItemInfo>> orderedItems = Suppliers.memoize(ArrayList::new);
     private Supplier<List<Group>> groups = Suppliers.memoize(ArrayList::new);
+    private Function<Entry<? extends InventoryItem, Integer>, ?> fnIsFavorite = ColumnDef.FAVORITE.fnDisplay, fnPrice = null;
+
+    private class SafeList<T> {
+        private final List<T> internalList;
+        private final Object lock = new Object(); // Object for synchronization
+
+        private SafeList() {
+            this.internalList = new ArrayList<>();
+        }
+
+        private void add(T element) {
+            synchronized (lock) {
+                internalList.add(element);
+            }
+        }
+
+        private T get(int index) {
+            synchronized (lock) {
+                try {
+                    // TODO: Find cause why index is invalid on some cases...
+                    return internalList.get(index);
+                } catch (Exception e) {
+                    return null;
+                }
+            }
+        }
+
+        private T remove(int index) {
+            synchronized (lock) {
+                return internalList.remove(index);
+            }
+        }
+
+        private int size() {
+            synchronized (lock) {
+                return internalList.size();
+            }
+        }
+
+        private void clear() {
+            synchronized (lock) {
+                internalList.clear();
+            }
+        }
+
+        private boolean isEmpty() {
+            synchronized (lock) {
+                return internalList.isEmpty();
+            }
+        }
+
+        private boolean addAll(Collection c) {
+            synchronized (lock) {
+                return internalList.addAll(c);
+            }
+        }
+
+        // Add other list operations as needed, ensuring synchronization
+    }
 
     private class ExpandCollapseButton extends FLabel {
         private boolean isAllCollapsed;
@@ -185,6 +241,15 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
         setGroupBy(config.getGroupBy(), true);
         setPileBy(config.getPileBy(), true);
         setColumnCount(config.getImageColumnCount(), true);
+
+        if (colOverrides != null) {
+            if (colOverrides.containsKey(ColumnDef.FAVORITE) && colOverrides.get(ColumnDef.FAVORITE).getFnDisplay() != null) {
+                this.fnIsFavorite = colOverrides.get(ColumnDef.FAVORITE).getFnDisplay();
+            }
+            if (colOverrides.containsKey(ColumnDef.PRICE) && colOverrides.get(ColumnDef.PRICE).getFnDisplay() != null) {
+                this.fnPrice = colOverrides.get(ColumnDef.PRICE).getFnDisplay();
+            }
+        }
     }
 
     public GroupDef getGroupBy() {
@@ -321,11 +386,17 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
             if (group.getBottom() < visibleTop) {
                 continue;
             }
-            for (Pile pile : group.piles) {
+            for (int i = 0; i < group.piles.size(); i++) {
+                Pile pile = group.piles.get(i);
+                if (pile == null)
+                    continue;
                 if (group.getBottom() < visibleTop) {
                     continue;
                 }
-                for (ItemInfo item : pile.items) {
+                for (int j = 0; j < pile.items.size(); j++) {
+                    ItemInfo item = pile.items.get(j);
+                    if (item == null)
+                        continue;
                     if (item.getTop() >= visibleTop) {
                         return item;
                     }
@@ -353,7 +424,7 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
         clearSelection();
 
         if (model.getOrderedList() != null) {
-            for (Entry<T, Integer> itemEntry : model.getOrderedList()) {
+            for (Entry<T, Integer> itemEntry : new ArrayList<>(model.getOrderedList())) {
                 T item = itemEntry.getKey();
                 int qty = itemEntry.getValue();
                 int groupIndex = groupBy == null ? -1 : groupBy.getItemGroupIndex(item);
@@ -373,6 +444,7 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
                             otherItems = new Group(Forge.getLocalizer().getMessage("lblOther"));
                             otherItems.isCollapsed = btnExpandCollapseAll.isAllCollapsed;
                             groups.get().add(otherItems);
+                            getScroller().add(otherItems);
                         }
                     }
                     group = otherItems;
@@ -403,8 +475,10 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
         btnExpandCollapseAll.setBounds(x, y, h, h);
         x += h + padding;
 
-        float pileByWidth = itemManager.getPileByWidth();
-        float groupByWidth = width - x - padding - pileByWidth;
+        // hide piles only for deckmanager since its unusable unlike group
+        float newWidth = itemManager instanceof DeckManager ? 0f : width / 2f;
+        float pileByWidth = newWidth - padding;
+        float groupByWidth = width - x - newWidth;
 
         cbGroupByOptions.setBounds(x, y, groupByWidth, h);
         x += groupByWidth + padding;
@@ -442,7 +516,10 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
                 //use TreeMap to build pile set so iterating below sorts on key
                 ColumnDef groupPileBy = groupBy == null ? pileBy : groupBy.getGroupPileBy(i, pileBy);
                 Map<Comparable<?>, Pile> piles = new TreeMap<>();
-                for (ItemInfo itemInfo : group.items) {
+                for (int j = 0; j < group.items.size(); j++) {
+                    ItemInfo itemInfo = group.items.get(j);
+                    if (itemInfo == null)
+                        continue;
                     Comparable<?> key = groupPileBy.fnSort.apply(itemInfo);
                     if (key != null && !piles.containsKey(key)) {
                         piles.put(key, new Pile());
@@ -478,7 +555,10 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
                 Pile pile = new Pile();
                 x = 0;
 
-                for (ItemInfo itemInfo : group.items) {
+                for (int j = 0; j < group.items.size(); j++) {
+                    ItemInfo itemInfo = group.items.get(j);
+                    if (itemInfo == null)
+                        continue;
                     itemInfo.pos = CardStackPosition.Top;
 
                     if (pile.items.size() == columnCount) {
@@ -489,7 +569,7 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
 
                     itemInfo.setBounds(x, y, itemWidth, itemHeight);
 
-                    if (pile.items.size() == 0) {
+                    if (pile.items.isEmpty()) {
                         pile.setBounds(0, y, groupWidth, itemHeight);
                         group.piles.add(pile);
                     }
@@ -504,13 +584,21 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
                 maxPileHeight = 0;
                 for (int j = 0; j < group.piles.size(); j++) {
                     Pile pile = group.piles.get(j);
+                    if (pile == null)
+                        continue;
                     y = pileY;
-                    for (ItemInfo itemInfo : pile.items) {
+                    for (int k = 0; k < pile.items.size(); k++) {
+                        ItemInfo itemInfo = pile.items.get(k);
+                        if (itemInfo == null)
+                            continue;
                         itemInfo.pos = CardStackPosition.BehindVert;
                         itemInfo.setBounds(x, y, itemWidth, itemHeight);
                         y += dy;
                     }
-                    pile.items.get(pile.items.size() - 1).pos = CardStackPosition.Top;
+                    ItemInfo itemInfo = pile.items.get(pile.items.size() - 1);
+                    if (itemInfo == null)
+                        continue;
+                    itemInfo.pos = CardStackPosition.Top;
                     pileHeight = y + itemHeight - dy - pileY;
                     if (pileHeight > maxPileHeight) {
                         maxPileHeight = pileHeight;
@@ -531,12 +619,30 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
             int index = 0;
             orderedItems.get().clear();
             for (Group group : groups.get()) {
-                if (group.isCollapsed || group.items.isEmpty()) {
+                if (group.items.isEmpty()) {
                     continue;
                 }
 
-                for (Pile pile : group.piles) {
-                    for (ItemInfo itemInfo : pile.items) {
+                if (group.isCollapsed && pileBy == null) {
+                    //Piles won't have been generated in this case.
+                    for (int i = 0; i < group.items.size(); i++) {
+                        ItemInfo itemInfo = group.items.get(i);
+                        if (itemInfo == null)
+                            continue;
+                        itemInfo.index = index++;
+                        orderedItems.get().add(itemInfo);
+                    }
+                    continue;
+                }
+
+                for (int i = 0; i < group.piles.size(); i++) {
+                    Pile pile = group.piles.get(i);
+                    if (pile == null)
+                        continue;
+                    for (int j = 0; j < pile.items.size(); j++) {
+                        ItemInfo itemInfo = pile.items.get(j);
+                        if (itemInfo == null)
+                            continue;
                         itemInfo.index = index++;
                         orderedItems.get().add(itemInfo);
                     }
@@ -558,13 +664,15 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
         if (count == 1) {
             selectItem(item);
             if (item != null)
-                itemManager.showMenu(false, item.getLeft(), item.getWidth());
+                itemManager.showMenu(true, item.getLeft(), item.getWidth());
             else
-                itemManager.showMenu(false);
+                itemManager.showMenu(true);
         } else if (count == 2) {
             if (item != null && item.selected) {
-                if (!(item.getKey() instanceof DeckProxy))
+                if (!(item.getKey() instanceof DeckProxy)) {
                     itemManager.activateSelectedItems();
+                    itemManager.closeMenu();
+                }
             }
         }
         return true;
@@ -602,14 +710,18 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
 
         for (int i = groups.get().size() - 1; i >= 0; i--) {
             Group group = groups.get().get(i);
-            if (!group.isCollapsed) {
+            if (!group.isCollapsed && !group.items.isEmpty()) {
                 for (int j = group.piles.size() - 1; j >= 0; j--) {
                     float relX = x + group.getScrollLeft() - group.getLeft();
                     float relY = y + getScrollValue();
                     Pile pile = group.piles.get(j);
+                    if (pile == null)
+                        continue;
                     if (pile.contains(relX, relY)) {
                         for (int k = pile.items.size() - 1; k >= 0; k--) {
                             ItemInfo item = pile.items.get(k);
+                            if (item == null)
+                                continue;
                             if (item.contains(relX, relY)) {
                                 return item;
                             }
@@ -632,7 +744,10 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
     @Override
     public int getIndexOfItem(T item) {
         for (Group group : groups.get()) {
-            for (ItemInfo itemInfo : group.items) {
+            for (int i = 0; i <  group.items.size(); i++) {
+                ItemInfo itemInfo =  group.items.get(i);
+                if (itemInfo == null)
+                    continue;
                 if (itemInfo.item == item) {
                     //if group containing item is collapsed, expand it so the item can be selected and has a valid index
                     if (group.isCollapsed) {
@@ -815,8 +930,8 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
     }
 
     private class Group extends FScrollPane {
-        private final List<ItemInfo> items = new ArrayList<>();
-        private final List<Pile> piles = new ArrayList<>();
+        private final SafeList<ItemInfo> items = new SafeList<>();
+        private final SafeList<Pile> piles = new SafeList<>();
         private final String name;
         private boolean isCollapsed;
         private float scrollWidth;
@@ -873,7 +988,10 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
 
             float visibleLeft = getScrollLeft();
             float visibleRight = visibleLeft + getWidth();
-            for (Pile pile : piles) {
+            for (int i = 0; i < piles.size(); i++) {
+                Pile pile = piles.get(i);
+                if (pile == null)
+                    continue;
                 if (pile.getRight() < visibleLeft) {
                     continue;
                 }
@@ -939,7 +1057,7 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
     }
 
     private class Pile extends FDisplayObject {
-        private final List<ItemInfo> items = new ArrayList<>();
+        private final SafeList<ItemInfo> items = new SafeList<>();
 
         @Override
         public void draw(Graphics g) {
@@ -947,7 +1065,10 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
             final float visibleBottom = visibleTop + getScroller().getHeight();
 
             ItemInfo skippedItem = null;
-            for (ItemInfo itemInfo : items) {
+            for (int i = 0; i < items.size(); i++) {
+                ItemInfo itemInfo = items.get(i);
+                if (itemInfo == null)
+                    continue;
                 if (itemInfo.getBottom() < visibleTop) {
                     continue;
                 }
@@ -979,7 +1100,7 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
         private boolean selected, deckSelectMode, showRanking;
         private final float IMAGE_SIZE = CardRenderer.MANA_SYMBOL_SIZE;
         private DeckProxy deckProxy = null;
-        private String colorID = null;
+        private String markedColors = null;
         private FImageComplex deckCover = null;
         private Texture dpImg = null;
         //private TextureRegion tr;
@@ -991,10 +1112,10 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
                 deckSelectMode = true;
                 deckProxy = (DeckProxy) item;
             }
-            if (item instanceof PaperCard) {
+            if (item instanceof PaperCard pc) {
                 showRanking = itemManager.getShowRanking() && FModel.getPreferences().getPrefBoolean(ForgePreferences.FPref.UI_OVERLAY_DRAFT_RANKING);
                 if (showRanking) {
-                    double score = CardRanker.getRawScore((PaperCard) item);
+                    double score = CardRanker.getRawScore(pc);
                     draftRank = score <= 0 ? 0 : score > 99 ? 99 : (int) Math.round(CardRanker.getRawScore((PaperCard) item));
                     if (draftRank >= 90) {
                         draftRankImage = FSkinImage.DRAFTRANK_S;
@@ -1006,9 +1127,12 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
                         draftRankImage = FSkinImage.DRAFTRANK_C;
                     }
                 }
-                if (((PaperCard) item).getColorID() != null) {
-                    colorID = ((PaperCard) item).getColorID().stream().map(MagicColor::toSymbol).collect(Collectors.joining());
+                if (pc.getMarkedColors() != null) {
+                    markedColors = pc.getMarkedColors().toString();
                 }
+            }
+            if(fnPrice != null) {
+                cardPrice = (Integer) fnPrice.apply(this);
             }
         }
 
@@ -1034,13 +1158,13 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
 
         private void drawCardLabel(Graphics g, String message, Color bgColor, float x, float y, float w, float h) {
             FSkinFont skinFont = FSkinFont.forHeight(w / 7);
-            float fontheight = skinFont.getLineHeight();
-            float ymod = h / 2 - fontheight / 2;
+            float fontHeight = skinFont.getLineHeight();
+            float ymod = h * 0.7f - fontHeight / 2;
             float oldAlpha = g.getfloatAlphaComposite();
-            g.setAlphaComposite(0.4f);
-            g.fillRect(bgColor, x, y + ymod, w, fontheight);
+            g.setAlphaComposite(0.6f);
+            g.fillRect(bgColor, x, y + ymod, w, fontHeight);
             g.setAlphaComposite(oldAlpha);
-            g.drawText(message, skinFont, Color.WHITE, x, y, w, h, false, Align.center, true);
+            textRenderer.drawText(g, message, skinFont, Color.BLACK, x, y + ymod, w, fontHeight, y + ymod, fontHeight, false, Align.center, true);
         }
 
         @Override
@@ -1065,8 +1189,8 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
                 }
             }
 
-            if (item instanceof PaperCard) {
-                CardRenderer.drawCard(g, (PaperCard) item, x, y, w, h, pos);
+            if (item instanceof PaperCard pc) {
+                CardRenderer.drawCard(g, pc, x, y, w, h, pos);
                 if (showRanking) {
                     float rankSize = w / 2;
                     float y2 = y + (rankSize - (rankSize * 0.1f));
@@ -1075,24 +1199,22 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
                     g.drawText(String.valueOf(draftRank), FSkinFont.forHeight(rankSize / 4), Color.WHITE, x, y, w, h, true, Align.center, true);
                 }
 
-                if (Forge.isMobileAdventureMode) {
-                    if (Forge.getCurrentScene() instanceof ShopScene) {
-                        if (cardPrice == null)
-                            cardPrice = ((ShopScene) Forge.getCurrentScene()).getCardPrice((PaperCard) item);
-                        drawCardLabel(g, "$" + cardPrice, Color.GOLD, x, y ,w ,h);
-                    } else {
-                        if (((PaperCard) item).isNoSell() && itemManager.showNFSWatermark()) {
-                            Texture nfs = Forge.getAssets().getTexture(getDefaultSkinFile("nfs.png"), false);
-                            if (nfs != null)
-                                g.drawImage(nfs, x, y, w, h);
-                            else
-                                drawCardLabel(g, Forge.getLocalizer().getMessage("lblNoSell"), Color.RED, x, y, w, h);
-                        }
+                if (itemManager.showPriceInfo()) {
+                    if (pc.hasNoSellValue() && !(Forge.isMobileAdventureMode || Config.instance().getSettingData().disableNotForSale)) {
+                        Texture nfs = Forge.getAssets().getTexture(getDefaultSkinFile("nfs.png"), false);
+                        if (nfs != null)
+                            g.drawImage(nfs, x, y, w, h);
+                        else
+                            drawCardLabel(g, Forge.getLocalizer().getMessage("lblNoSell"), Color.RED, x, y, w, h);
+                    }
+                    else {
+                        if (cardPrice != null)
+                            drawCardLabel(g, "{CS} " + cardPrice, Color.GOLD, x, y, w, h);
                     }
                 }
                 // spire colors
-                if (colorID != null && !colorID.isEmpty()) {
-                    textRenderer.drawText(g, colorID, FSkinFont.forHeight(w / 5), Color.WHITE, x, y + h / 4, w, h, y, h, false, Align.center, true);
+                if (markedColors != null && !markedColors.isEmpty()) {
+                    textRenderer.drawText(g, markedColors, FSkinFont.forHeight(w / 5), Color.WHITE, x, y + h / 4, w, h, y, h, false, Align.center, true);
                 }
             } else if (item instanceof ConquestCommander) {
                 CardRenderer.drawCard(g, ((ConquestCommander) item).getCard(), x, y, w, h, pos);
@@ -1129,9 +1251,9 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
                         g.drawImage(Forge.getAssets().getTexture(getDefaultSkinFile("cover.png"), false), x + (w - w * scale) / 2, y + (h - h * scale) / 1.5f, w * scale, h * scale);
                     }
                     //fake labelname shadow
-                    g.drawText(item.getName(), GROUP_HEADER_FONT, Color.BLACK, (x + PADDING) - 1f, (y + PADDING * 2) + 1f, w - 2 * PADDING, h - 2 * PADDING, true, Align.center, false);
+                    g.drawText(item.getDisplayName(), GROUP_HEADER_FONT, Color.BLACK, (x + PADDING) - 1f, (y + PADDING * 2) + 1f, w - 2 * PADDING, h - 2 * PADDING, true, Align.center, false);
                     //labelname
-                    g.drawText(item.getName(), GROUP_HEADER_FONT, Color.WHITE, x + PADDING, y + PADDING * 2, w - 2 * PADDING, h - 2 * PADDING, true, Align.center, false);
+                    g.drawText(item.getDisplayName(), GROUP_HEADER_FONT, Color.WHITE, x + PADDING, y + PADDING * 2, w - 2 * PADDING, h - 2 * PADDING, true, Align.center, false);
                 } else {
                     if (!deckProxy.isGeneratedDeck()) {
                         if (deckProxy.getDeck().isEmpty()) {
@@ -1204,14 +1326,20 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
                         String key = item.getImageKey(false);
                         if (key.startsWith(ImageKeys.PRECON_PREFIX) || key.startsWith(ImageKeys.FATPACK_PREFIX)
                                 || key.startsWith(ImageKeys.BOOSTERBOX_PREFIX) || key.startsWith(ImageKeys.BOOSTER_PREFIX) || key.startsWith(ImageKeys.TOURNAMENTPACK_PREFIX)) {
-                            CardView cv = new CardView(-1, null, item.getName(), null, item.getImageKey(false));
+                            CardView cv = new CardView(-1, null, item.getDisplayName(), null, item.getImageKey(false));
                             CardImageRenderer.drawCardImage(g, cv, false, x, y, w, h, CardStackPosition.Top, false, false);
                             return;
                         }
                     }
                     g.fillRect(Color.BLACK, x, y, w, h);
-                    g.drawText(item.getName(), GROUP_HEADER_FONT, Color.WHITE, x + PADDING, y + PADDING, w - 2 * PADDING, h - 2 * PADDING, true, Align.center, false);
+                    g.drawText(item.getDisplayName(), GROUP_HEADER_FONT, Color.WHITE, x + PADDING, y + PADDING, w - 2 * PADDING, h - 2 * PADDING, true, Align.center, false);
                 }
+            }
+
+            if (itemManager.itemIsFavorite(this)) {
+                float offset = w * 0.05f;
+                float size = w * 0.15f;
+                g.drawImage(FSkinImage.HDSTAR_FILLED, x + offset, y + h - offset - size, size, size);
             }
         }
 

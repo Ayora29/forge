@@ -3,6 +3,7 @@ package forge.toolbox;
 import static forge.card.CardRenderer.MANA_SYMBOL_SIZE;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -40,6 +41,7 @@ import forge.localinstance.skin.IHasSkinProp;
 import forge.screens.match.MatchController;
 import forge.screens.match.views.VAvatar;
 import forge.screens.match.views.VStack;
+import forge.util.CardRendererUtils;
 import forge.util.TextUtil;
 import forge.util.Utils;
 
@@ -271,6 +273,14 @@ public class FChoiceList<T> extends FList<T> implements ActivateHandler {
         setSelectedIndex(getIndexOf(choice));
     }
 
+    public void setSelectedItems(Collection<T> items) {
+        selectedIndices.clear();
+        items.stream().mapToInt(this::getIndexOf).filter(i -> i >= 0).forEach(selectedIndices::add);
+        if(!items.isEmpty())
+            scrollIntoView(getIndexOf(items.iterator().next()));
+        onSelectionChange();
+    }
+
     protected String getChoiceText(T choice) {
         return choice.toString();
     }
@@ -431,33 +441,6 @@ public class FChoiceList<T> extends FList<T> implements ActivateHandler {
         }
     }
 
-    //simple check for cardview needed on some special renderer for cards
-    private boolean showAlternate(CardView cardView, String value) {
-        if (cardView == null)
-            return false;
-        if (cardView.isFaceDown())
-            return false;
-        boolean showAlt = false;
-        if (cardView.hasAlternateState()) {
-            if (cardView.hasBackSide())
-                showAlt = value.contains(cardView.getBackSideName()) || cardView.getAlternateState().getAbilityText().contains(value);
-            else if (cardView.isAdventureCard())
-                showAlt = value.equals(cardView.getAlternateState().getAbilityText());
-            else if (cardView.isSplitCard()) {
-                //special case if aftermath cards can be cast from graveyard like yawgmoths will, you will have choices
-                if (cardView.getAlternateState().getOracleText().contains("Aftermath"))
-                    showAlt = cardView.getAlternateState().getOracleText().contains(value);
-                else {
-                    if (cardView.isRoom()) // special case for room cards
-                        showAlt = cardView.getAlternateState().getName().equalsIgnoreCase(value);
-                    else
-                        showAlt = value.equals(cardView.getAlternateState().getAbilityText());
-                }
-            }
-        }
-        return showAlt;
-    }
-
     //special renderer for cards
     protected class PaperCardItemRenderer extends ItemRenderer {
         @Override
@@ -566,7 +549,7 @@ public class FChoiceList<T> extends FList<T> implements ActivateHandler {
                         }
                     }
                     CardView cv = ((IHasCardView) value).getCardView();
-                    CardZoom.show(cv, showAlternate(cv, value.toString()));
+                    CardZoom.show(cv, CardRendererUtils.canShowAlternate(cv, value.toString()));
                 } catch (Exception ignored) {
                     //fixme: java.lang.ClassCastException for cards like Subtlety which should be cancelable instead...
                 }
@@ -586,7 +569,7 @@ public class FChoiceList<T> extends FList<T> implements ActivateHandler {
                     }
                 }
                 CardView cv = ((IHasCardView) value).getCardView();
-                CardZoom.show(cv, showAlternate(cv, value.toString()));
+                CardZoom.show(cv, CardRendererUtils.canShowAlternate(cv, value.toString()));
             } catch (Exception ignored) {
                 //fixme: java.lang.ClassCastException for cards like Subtlety which should be cancelable instead...
             }
@@ -603,7 +586,7 @@ public class FChoiceList<T> extends FList<T> implements ActivateHandler {
                     if (morph != null) {
                         g.drawImage(morph, x, y, VStack.CARD_WIDTH, VStack.CARD_HEIGHT);
                     } else if (cv != null) {
-                        boolean showAlternate = showAlternate(cv, value.toString());
+                        boolean showAlternate = CardRendererUtils.canShowAlternate(cv, value.toString());
                         if (!cv.isFaceDown())
                             CardRenderer.drawCardWithOverlays(g, cv, x, y, VStack.CARD_WIDTH, VStack.CARD_HEIGHT, CardStackPosition.Top, false, showAlternate, true);
                         else
@@ -611,7 +594,7 @@ public class FChoiceList<T> extends FList<T> implements ActivateHandler {
                     }
                 } else {
                     if (cv != null) {
-                        boolean showAlternate = showAlternate(cv, value.toString());
+                        boolean showAlternate = CardRendererUtils.canShowAlternate(cv, value.toString());
                         if (!cv.isFaceDown())
                             CardRenderer.drawCardWithOverlays(g, cv, x, y, VStack.CARD_WIDTH, VStack.CARD_HEIGHT, CardStackPosition.Top, false, showAlternate, true);
                         else

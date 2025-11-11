@@ -71,7 +71,6 @@ public class RepeatEachEffect extends SpellAbilityEffect {
         else if (sa.hasParam("DefinedCards")) {
             repeatCards = AbilityUtils.getDefinedCards(source, sa.getParam("DefinedCards"), sa);
         }
-        boolean loopOverCards = repeatCards != null && !repeatCards.isEmpty();
 
         if (sa.hasParam("ClearRemembered")) {
             source.clearRemembered();
@@ -89,7 +88,7 @@ public class RepeatEachEffect extends SpellAbilityEffect {
             sa.setLoseLifeMap(Maps.newHashMap());
         }
 
-        if (loopOverCards) {
+        if (repeatCards != null && !repeatCards.isEmpty()) {
             if (sa.hasParam("ChooseOrder") && repeatCards.size() > 1) {
                 final Player chooser = sa.getParam("ChooseOrder").equals("True") ? activator :
                         AbilityUtils.getDefinedPlayers(source, sa.getParam("ChooseOrder"), sa).get(0);
@@ -138,12 +137,8 @@ public class RepeatEachEffect extends SpellAbilityEffect {
                 final String[] workingCopy = def.split("_");
                 final String validFilter = workingCopy[1];
                 res = CardUtil.getThisTurnCast(validFilter, source, sa, activator);
-            } else if (def.startsWith("Defined ")) {
-                res = AbilityUtils.getDefinedCards(source, def.substring(8), sa);
             } else {
-                final ZoneType zone = sa.hasParam("TypesFromZone") ?
-                        ZoneType.smartValueOf(sa.getParam("TypesFromZone")) : ZoneType.Battlefield;
-                res = CardLists.getValidCards(game.getCardsIn(zone), def, source.getController(), source, sa);
+                res = AbilityUtils.getDefinedCards(source, def, sa);
             }
             for (final Card c : res) {
                 for (CardType.CoreType type : c.getType().getCoreTypes()) {

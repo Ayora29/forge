@@ -22,6 +22,7 @@ import forge.deck.Deck;
 import forge.deck.DeckSection;
 import forge.game.*;
 import forge.game.ability.AbilityUtils;
+import forge.game.ability.effects.RollDiceEffect;
 import forge.game.card.*;
 import forge.game.combat.Combat;
 import forge.game.combat.CombatUtil;
@@ -53,10 +54,7 @@ import forge.util.collect.FCollectionView;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Predicate;
 
 /**
@@ -473,12 +471,12 @@ public class PlayerControllerForTests extends PlayerController {
 
     @Override
     public byte chooseColor(String message, SpellAbility sa, ColorSet colors) {
-        return Iterables.getFirst(colors, MagicColor.WHITE);
+        return Iterables.getFirst(colors, MagicColor.Color.WHITE).getColorMask();
     }
 
     @Override
     public byte chooseColorAllowColorless(String message, Card card, ColorSet colors) {
-        return Iterables.getFirst(colors, (byte)0);
+        return Iterables.getFirst(colors, MagicColor.Color.COLORLESS).getColorMask();
     }
 
     private CardCollection chooseItems(CardCollectionView items, int amount) {
@@ -527,6 +525,26 @@ public class PlayerControllerForTests extends PlayerController {
     }
 
     @Override
+    public List<Integer> chooseDiceToReroll(List<Integer> rolls) {
+        return new ArrayList<>();
+    }
+
+    @Override
+    public Integer chooseRollToModify(List<Integer> rolls) {
+        return Aggregates.random(rolls);
+    }
+
+    @Override
+    public RollDiceEffect.DieRollResult chooseRollToSwap(List<RollDiceEffect.DieRollResult> rolls) {
+        return Aggregates.random(rolls);
+    }
+
+    @Override
+    public String chooseRollSwapValue(List<String> swapChoices, Integer currentResult, int power, int toughness) {
+        return Aggregates.random(swapChoices);
+    }
+
+    @Override
     public Object vote(SpellAbility sa, String prompt, List<Object> options, ListMultimap<Object, Player> votes, Player forPlayer, boolean optional) {
         return chooseItem(options);
     }
@@ -538,7 +556,7 @@ public class PlayerControllerForTests extends PlayerController {
 
     @Override
     public CounterType chooseCounterType(List<CounterType> options, SpellAbility sa, String prompt, Map<String, Object> params) {
-        return Iterables.getFirst(options, CounterType.get(CounterEnumType.P1P1));
+        return Iterables.getFirst(options, CounterEnumType.P1P1);
     }
 
     @Override
@@ -573,6 +591,12 @@ public class PlayerControllerForTests extends PlayerController {
 
     @Override
     public boolean payCostToPreventEffect(Cost cost, SpellAbility sa, boolean alreadyPaid, FCollectionView<Player> allPayers) {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    @Override
+    public boolean payCostDuringRoll(final Cost cost, final SpellAbility sa, final FCollectionView<Player> allPayers) {
         // TODO Auto-generated method stub
         return false;
     }
@@ -638,6 +662,11 @@ public class PlayerControllerForTests extends PlayerController {
     @Override
     public void revealAISkipCards(final String message, final Map<Player, Map<DeckSection, List<? extends PaperCard>>> unplayable) {
         // TODO test this!
+    }
+
+    @Override
+    public void revealUnsupported(Map<Player, List<PaperCard>> unsupported) {
+        // test this!
     }
 
     @Override
