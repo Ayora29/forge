@@ -156,16 +156,24 @@ public final class ImageKeys {
                 }
             }
             else {
-                int index = filename.lastIndexOf('_');
-                if (index != -1) {
-                    String setlessFilename = filename.substring(0, index);
+                String[] parts = filename.split("\\|");
+                if (parts.length > 1) {
+                    // try with set name
+                    String setFilename = parts[0] + "_" + parts[1].toLowerCase();
+                    file = findFile(dir, setFilename);
+                    if (file != null) {
+                        cachedCards.put(filename, file);
+                        return file;
+                    }
 
                     // try without set name
+                    String setlessFilename = parts[0];
                     file = findFile(dir, setlessFilename);
                     if (file != null) {
                         cachedCards.put(filename, file);
                         return file;
                     }
+
                     // if there's an art variant try without it
                     if (setlessFilename.matches(".*[0-9]*$")) {
                         file = findFile(dir, setlessFilename.replaceAll("[0-9]*$", ""));
